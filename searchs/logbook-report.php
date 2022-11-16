@@ -1,0 +1,127 @@
+<?php
+
+// PATH
+require_once '../assets/include/path_variable.php';
+
+// Session
+require_once PATH_INCLUDE . DS . 'session_variable.php';
+
+// Initiate DB connection
+require_once PATH_INCLUDE . DS . 'db_init.php';
+
+// <editor-fold defaultstate="collapsed" desc="Functions">
+
+function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey = "", $value = "", $uniq = "", $tabindex = "", $class = "", $empty = 1, $onchange = "", $boolAllow = false)
+{
+    global $myDatabase;
+
+    $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+
+    echo "<SELECT class='$class' tabindex='$tabindex' $disabled name='" . ($id . $uniq) . "' id='" . ($id . $uniq) . "' $onchange>";
+
+    if ($empty == 1) {
+        echo "<option value=''>-- Please Select --</option>";
+    } else if ($empty == 2) {
+        echo "<option value=''>-- Please Select Stockpile --</option>";
+    } else if ($empty == 3) {
+        echo "<option value=''>-- Please Select Type --</option>";
+    } else if ($empty == 4) {
+        echo "<option value=''>-- Please Select Payment For --</option>";
+    } else if ($empty == 5) {
+        echo "<option value=''>-- Please Select Method --</option>";
+    } else if ($empty == 6) {
+        echo "<option value=''>-- Please Select Buyer --</option>";
+    } else if ($empty == 7) {
+        echo "<option value=''>-- All --</option>";
+    }
+
+    if ($result !== false) {
+        while ($combo_row = $result->fetch_object()) {
+            if (strtoupper($combo_row->$valuekey) == strtoupper($setvalue))
+                $prop = "selected";
+            else
+                $prop = "";
+
+            echo "<OPTION value=\"" . $combo_row->$valuekey . "\" " . $prop . ">" . $combo_row->$value . "</OPTION>";
+        }
+    }
+
+    if ($boolAllow) {
+        echo "<option value='INSERT'>-- Insert New --</option>";
+    }
+
+    echo "</SELECT>";
+}
+
+// </editor-fold>
+
+?>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#searchForm').submit(function (e) {
+            e.preventDefault();
+//            alert('tes');
+            $('#dataContent').load('reports/logbook-report.php', {
+                // periodFrom: $('input[id="searchPeriodFrom"]').val(),
+                // periodTo: $('input[id="searchPeriodTo"]').val(),
+                periodFrom: $('select[id="periodFrom"]').val(),
+                periodTo: $('select[id="periodTo"]').val(),
+				paymentSchedule: $('select[id="paymentSchedule"]').val(),
+            }, iAmACallbackFunction2);
+        });
+    });
+
+    $(function () {
+        //https://github.com/eternicode/bootstrap-datepicker
+        $('.datepicker').datepicker({
+            minViewMode: 1,
+            todayHighlight: true,
+            format: "mm/yyyy",
+            //autoclose: true,
+            orientation: "bottom auto",
+            startView: 1
+        });
+    });
+</script>
+
+<div class="row" style="background-color: #f5f5f5;
+            margin-bottom: 5px; padding-top: 15px;
+            -webkit-border-radius: 4px;
+            -moz-border-radius: 4px;
+            border-radius: 4px;">
+    <div class="offset3 span3">
+        <form class="form-horizontal" id="searchForm" method="post">
+
+            <div class="control-group">
+                <label class="control-label" for="glModule">Periode Request Date HO From</label>
+                <div class="controls">
+                    <?php
+                    createCombo("SELECT request_date_ho AS period FROM logbook GROUP BY request_date_ho ", "", "", "periodFrom", "period", "period", "", "", "", 1)
+                    ?>
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="glModule">Periode Request Date HO To</label>
+                <div class="controls">
+                    <?php
+                    createCombo("SELECT request_date_ho AS period FROM logbook GROUP BY request_date_ho ", "", "", "periodTo", "period", "period", "", "", "", 1)
+                    ?>
+                </div>
+            </div>
+			<div class="control-group">
+                <label class="control-label" for="glModule">Periode Payment Schedule</label>
+                <div class="controls">
+                    <?php
+                    createCombo("SELECT payment_schedule AS period FROM logbook GROUP BY payment_schedule ", "", "", "paymentSchedule", "period", "period", "", "", "", 1)
+                    ?>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="controls">
+                    <button type="submit" class="btn">Preview</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
