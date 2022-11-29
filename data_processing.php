@@ -1462,6 +1462,7 @@ elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'PO_data') {
 	$totalall = str_replace(",", "", $myDatabase->real_escape_string($_POST['totalall']));
     $toc =$myDatabase->real_escape_string($_POST['toc']);
 	$signId =$myDatabase->real_escape_string($_POST['signId']);
+    $POMethod =$myDatabase->real_escape_string($_POST['POMethod']);
     //$quantity = str_replace(",", "", $myDatabase->real_escape_string($_POST['quantity']));
 	//$amount = $grandTotal;
 	//$amountConverted = $grandTotal;
@@ -1486,9 +1487,9 @@ elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'PO_data') {
 	 if($resultsql3->num_rows == 0) {
             $sql="INSERT INTO `po_hdr`
 					(`no_po`,`general_vendor_id`,`no_penawaran`,`tanggal`,`memo`,`entry_by`,`entry_date`,`currency_id`,`exchangerate`,`grandtotal`,`stockpile_id`,`toc`,`sign_id`,
-					`totalppn`,`totalpph`,`totalall`)
+					`totalppn`,`totalpph`,`totalall`,`po_method`)
 				VALUES
-					('{$POId}',{$generalVendorId},'{$nopenawaran}',STR_TO_DATE('{$tanggalpo}','%d/%m/%Y'),'{$remarks}',{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$currencyId},{$exchangeRate},{$grandTotal},{$stockpileId},'{$toc}',{$signId},{$totalppn},{$totalpph},{$totalall});";
+					('{$POId}',{$generalVendorId},'{$nopenawaran}',STR_TO_DATE('{$tanggalpo}','%d/%m/%Y'),'{$remarks}',{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$currencyId},{$exchangeRate},{$grandTotal},{$stockpileId},'{$toc}',{$signId},{$totalppn},{$totalpph},{$totalall},{$POMethod});";
 			
       
 		
@@ -1576,6 +1577,7 @@ elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'PO_detail') {
 	 $itemId = $myDatabase->real_escape_string($_POST['itemId']);
 	 $shipmentId = $myDatabase->real_escape_string($_POST['shipmentId']);
 	 $requestDate = $myDatabase->real_escape_string($_POST['requestDate']);
+     $POMethod = $myDatabase->real_escape_string($_POST['POMethod']);
 
 	if($pphpoID == 0){
 		$pphstatus = 0;
@@ -1617,10 +1619,10 @@ elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'PO_detail') {
    if($result->num_rows == 0) {
            $sql =
        "INSERT INTO `po_detail`
-       (`no_po`,`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`)
+       (`no_po`,`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`, `po_method_detail`)
        VALUES
        ('{$POID}',{$qty},{$price},{$amount},{$ppnpo},{$pphpo},
-       {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus});";
+       {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus},{$POMethod});";
 
 
              $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);

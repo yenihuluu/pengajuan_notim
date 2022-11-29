@@ -8,8 +8,8 @@ $errorMessage = "";
 //  $serverDB = "localhost"; //local
  $serverDB = "10.15.14.55"; //dev
  $userDB = "root";
-  $pwdDB = "Jpro@2016"; //local
-//$pwdDB = ""; //local
+  $pwdDB = "Jpro@2016"; //prod
+// $pwdDB = ""; //local
 $database = "jatim_pengajuan"; //prod
 
  //$serverDB = "10.15.14.54"; //prod

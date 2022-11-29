@@ -45,6 +45,7 @@ $gvEmail = '';
 $style = '';
 $periodeFrom = '';
 $periodeTo = '';
+$downPayment = '';
 // $priceOKS = '';
 
 // </editor-fold>
@@ -58,8 +59,9 @@ if (isset($_POST['idPOHDR']) && $_POST['idPOHDR'] != '') {
     $requestPaymentDate = $_POST['requestPaymentDateValue'];
     // <editor-fold defaultstate="collapsed" desc="Query for Contract Data">
 
-    $sql = "SELECT p.*,DATE_FORMAT(p.tanggal,'%d/%m/%Y') as date ,s.*FROM po_hdr p 
+    $sql = "SELECT p.*, pd.termin, DATE_FORMAT(p.tanggal,'%d/%m/%Y') as date ,s.*FROM po_hdr p 
             LEFT JOIN stockpile s ON p.stockpile_id = s.stockpile_id 
+            LEFT JOIN po_detail pd ON p.idpo_hdr = pd.po_hdr_id 
             WHERE idpo_hdr = $idPOHDR";
     $resultData = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
 
@@ -69,6 +71,7 @@ if (isset($_POST['idPOHDR']) && $_POST['idPOHDR'] != '') {
         $stockpile = $rowData->stockpile_name;
         $stockpileId = $rowData->stockpile_id;
         $noPO = $rowData->no_po;
+        $termin = $rowData->termin;
     }
     // </editor-fold>
 
@@ -76,7 +79,7 @@ if (isset($_POST['idPOHDR']) && $_POST['idPOHDR'] != '') {
 			(case when pd.pphstatus = 1 then pd.pph else 0 end) as pph,
 			(case when pd.ppnstatus = 1 then pd.ppn else 0 end) as ppn,
     		(pd.amount+(case when pd.ppnstatus = 1 then pd.ppn else 0 end)-(case when pd.pphstatus = 1 then pd.pph else 0 end)) as grandtotal,
-            u.uom_type,s.`stockpile_name`, sh.`shipment_no`,sum(id.tamount_converted) as paid, sum(pgd.termin) as total_termin
+            u.uom_type,s.`stockpile_name`, sh.`shipment_no`,sum(id.tamount_converted) as paid, sum(pgd.termin) as total_termin, pd.idpo_detail
 			from po_detail pd
 			left join master_item i on i.idmaster_item = pd.item_id
             left join uom u on u.idUOM = i.uom_id
@@ -1477,14 +1480,14 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue">
             <label>Termin</label>
             <input type="text" placeholder="termin" tabindex="" id="termin" name="termin"
-                   value="<?php echo $termin ?>">
+                   value="<?php echo $termin ?>" readonly>
         </div>
 
-        <div class="span3 lightblue">
+        <!-- <div class="span3 lightblue">
             <label>Sisa Termin</label>
             <input type="number" placeholder="SisaTermin" tabindex="" id="sisaTermin" name="sisaTermin"
                    value="<?php echo $sisaTermin ?>" readonly>
-        </div>
+        </div> -->
     </div>
 
     <div id="row2" class="row-fluid hidden" style="margin-bottom: 7px;">
@@ -1698,10 +1701,8 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     <th>Amount</th>
                     <th>VAT</th>
                     <th>WHT</th>
-                    <th>PAID</th>
-                    <th>Pengajuan Amount</th>
-                    <th>Available Amount</th>
-                    <th>Total Amount PO</th>
+                    <th>Down Payment</th>
+                    <th>Total Amount</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -1711,17 +1712,54 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     $totalPaid = 0;
                     $totalPAmount = 0;
                     $totalAvailableAmount = 0;
+                    $downPayment = 0;
                     while ($row = $resultPODetail->fetch_object()) {
+                        $sqlDP = "SELECT SUM((idp.amount_payment + idp.ppn_value) - idp.pph_value) AS down_payment,
+                       idp.ppn_value AS ppn, 
+                       idp.pph_value AS pph 
+                        FROM invoice_dp idp 
+                        WHERE idp.status = 0 AND idp.po_detail_id_dp = {$row->idpo_detail}";
+                        $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
+                        if ($resultDP !== false && $resultDP->num_rows > 0) {
+
+                            $rowDP = $resultDP->fetch_object();
+
+                            if ($rowDP->ppn == 0) {
+                                $dp_ppn = 0;
+                            } else {
+                                //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                                $dp_ppn = $rowDP->ppn;
+                            }
+
+                            if ($rowDP->pph == 0) {
+                                $dp_pph = 0;
+                            } else {
+                                //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                                $dp_pph = $rowDP->pph;
+                            }
+
+
+                            if ($rowDP->down_payment != 0) {
+                                //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                                //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                                $downPayment = $rowDP->down_payment;
+                                // echo " AKA " . $downPayment;
+                            } else {
+                                $downPayment = 0;
+                            }
+                        }
+
                         $amount = $row->amount;
                         $totalPrice = $totalPrice + $amount;
                         $tpph = $row->pph;
                         $tppn = $row->ppn;
                         $paid = $row->paid;
                         $tgtotal = $row->grandtotal;
-                        $tamount = $amount + $tppn - $tpph;
+                        $tamount = ($amount + $tppn - $tpph) - $downPayment;
                         $AvailAmount = $tamount - $paid;
                         $totalpph = $totalpph + $tpph;
                         $totalppn = $totalppn + $tppn;
+                        $totalDownPayment = $totalDownPayment + $downPayment;
                         $totalall = $totalall + $tamount;
 
                         $pAmount = $tamount * $termin / 100;
@@ -1739,9 +1777,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     <td style="text-align: right;"><?php echo number_format($row->amount * $termin / 100, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($tppn * $termin / 100, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($tpph * $termin / 100, 2, ".", ","); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($paid, 2, ".", ","); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($pAmount, 2, ".", ","); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($AvailAmount, 2, ".", ","); ?></td>
+                    <td style="text-align: right;"><?php echo number_format($downPayment, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($tamount, 2, ".", ","); ?></td>
 
                     <input type="hidden" name="grandTotal"
@@ -1760,13 +1796,8 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                         style="text-align: right;"><?php echo number_format($totalppn * $termin / 100, 2, ".", ","); ?></td>
                     <td colspan="1"
                         style="text-align: right;"><?php echo number_format($totalpph * $termin / 100, 2, ".", ","); ?></td>
-                    <td colspan="1"
-                        style="text-align: right;"><?php echo number_format($totalPaid, 2, ".", ","); ?></td>
-                    <td colspan="1" style="text-align: right;">
-                        <?php echo number_format($totalPAmount, 2, ".", ","); ?>
-                    </td>
-                    <td colspan="1"
-                        style="text-align: right;"><?php echo number_format($totalAvailableAmount, 2, ".", ","); ?></td>
+                        <td colspan="1"
+                        style="text-align: right;"><?php echo number_format($totalDownPayment, 2, ".", ","); ?></td>
                     <td colspan="1" style="text-align: right;"><?php echo number_format($totalall, 2, ".", ","); ?></td>
 
                 </tr>

@@ -66,6 +66,11 @@ if (isset($_POST['POId']) && $_POST['POId'] != '') {
     }
 }
 
+if (isset ($_POST['POMethod']) && $_POST['POMethod'] != '') {
+
+    $POMethod = $_POST['POMethod'];
+}
+
 if($podID != ''){
     $sql = "SELECT * FROM PO_detail WHERE idpo_detail = {$podID}";
     $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
@@ -167,19 +172,19 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 setPPh(1,<?php echo $generalVendorId; ?>, <?php echo $pphId ?>);
         <?php } ?>
 
-        <?php if($generalVendorId != '') {?>
-            setInvoiceDP(<?php echo  $generalVendorId ?>, '', '', 'NONE');
+        <?php if($generalVendorId != '' && $POMethod == 1) {?>
+            setInvoiceDP(<?php echo  $generalVendorId ?>, '', '<?php echo  $method_ ?>');
         <?php } ?>
         
-        $('#ppnPO1').number(true, 5);
-        $('#qty').number(true, 5);
-        $('#price').number(true, 5);
+        $('#ppnPO1').number(true, 10);
+        $('#qty').number(true, 10);price
+        $('#price').number(true, 10);
        
         sum();
 
         $("#qty, #price, #termin").on("keydown keyup", function () {
             sum();
-            $('#amount').number(true, 5);
+            $('#amount').number(true, 10);
             if (document.getElementById('generalVendorId').value != '' && document.getElementById('generalVendorId').value != 'INSERT') {
                 getGeneralVendorTax($('select[id="generalVendorId"]').val(), $('input[id="amount"]').val().replace(new RegExp(",", "g"), ""));
             }
@@ -348,7 +353,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         document.getElementById('amount').value = result;
     }
 
-    function setInvoiceDP(generalVendorId, ppn1) {
+    function setInvoiceDP(generalVendorId, ppn1, method) {
         $.ajax({
             url: 'get_data.php',
             method: 'POST',
@@ -356,7 +361,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 action: 'setInvoiceDP',
                 generalVendorId: generalVendorId,
                 ppn1: ppn1,
-
+                method: method
             },
             success: function (data) {
                 if (data != '') {
@@ -373,6 +378,8 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
 <input type="hidden" class="span12" readonly id="requestDate" name="requestDate" value="<?php echo $requestDate; ?>">
 <input type="hidden" id="method_" name="method_" value="<?php echo $method_; ?>">
 <input type="hidden" id="pod_id" name="pod_id" value="<?php echo $podID; ?>">
+<input type="hidden" id="POMethod" name="POMethod" value = "<?php echo $POMethod ?>">
+
 <div class="row-fluid">
     <div class="span3 lightblue">
         <input type="hidden" class="span12" readonly id="generatedPONo" name="generatedPONo"

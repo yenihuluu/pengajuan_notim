@@ -248,7 +248,19 @@ $allowImport = true;
 			<td style="text-align: right"><?php echo number_format($rowData->totalppn, 2, ".", ","); ?></td>
 			<td style="text-align: right"><?php echo number_format($rowData->totalpph, 2, ".", ","); ?></td>
 			<td style="text-align: right"><?php echo number_format($rowData->totalall, 2, ".", ","); ?></td>
-			<td><?php echo $rowData->status; ?></td>
+            <?php if ($rowData->status_id == 0) { ?>
+                <td style="color: blue;"><?php echo $rowData->status; ?></td>
+            <?php } else if ($rowData->status_id == 1) { ?>
+                <td style="color: #0e90d2;"><?php echo $rowData->status; ?></td>
+            <?php } else if ($rowData->status_id == 2) { ?>
+                <td style="color: green;"><?php echo $rowData->status; ?></td>
+            <?php } else if ($rowData->status_id == 3 || $rowData->status_id == 4) { ?>
+                <td style="color: red;"><?php echo $rowData->status; ?></td>
+            <?php } else if ($rowData->status_id == 5) { ?>
+                <td style="color: yellowgreen;"><?php echo $rowData->status; ?></td>
+            <?php } else { ?>
+                <td><?php echo $rowData->status; ?></td>
+            <?php } ?>
             
          
         </tr>

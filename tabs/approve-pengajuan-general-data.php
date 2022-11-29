@@ -50,8 +50,9 @@ if (isset($_POST['pgId']) && $_POST['pgId'] != '') {
 
     $sql = "SELECT pg.*, DATE_FORMAT(pg.invoice_date, '%d/%m/%Y') AS invoice_date2,
             DATE_FORMAT(pg.input_date, '%d/%m/%Y') AS input_date, DATE_FORMAT(pg.request_date, '%d/%m/%Y') AS request_date, DATE_FORMAT(pg.tax_date, '%d/%m/%Y') AS tax_date,
-            CASE WHEN pg.invoice_id IS NOT NULL THEN pg.invoice_id ELSE pg.invoice_old_id END AS invoiceId
+            CASE WHEN pg.invoice_id IS NOT NULL THEN pg.invoice_id ELSE pg.invoice_old_id END AS invoiceId, ph.po_method
             FROM pengajuan_general pg
+            LEFT JOIN po_hdr ph ON ph.idpo_hdr = pg.po_id
             WHERE pg.pengajuan_general_id = {$pgId} 
             ORDER BY pg.pengajuan_general_id ASC
             ";
@@ -80,6 +81,7 @@ if (isset($_POST['pgId']) && $_POST['pgId'] != '') {
         $pStatus = $rowData->status_pengajuan;
         $invoiceMethod = $rowData->invoice_method;
         $typeOKS = $rowData->transaksi_oks_akt;
+        $POMethod = $rowData->po_method;
         if($pStatus == 2){
             $disabledProperty = ' disabled ';
         }
@@ -865,10 +867,10 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
             <label>Invoice Method <span style="color: red;">*</span></label>
             <?php
             createCombo("SELECT '1' as id, 'Full Payment' as info UNION
-              		   SELECT '2' as id, 'Down Payment' as info;", $invoiceMethod, "", "invoiceMethod", "id", "info", "", "", "select2combobox100", 1);
+              		   SELECT '2' as id, 'Down Payment' as info;", $POMethod, "disabled", "invoiceMethod", "id", "info", "", "", "select2combobox100", 1);
             ?>
-            <!-- <input type="text" value="Full Payment" readonly>
-            <input type="hidden" value="1" id="invoiceMethod"> -->
+            <input type="hidden" class="span12" tabindex="" id="invoiceMethod" name="invoiceMethod"
+                   value="<?php echo $POMethod; ?>" readonly>
         </div>
 
         <div class="span1 lightblue">

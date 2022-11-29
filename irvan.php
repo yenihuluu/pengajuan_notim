@@ -115,10 +115,10 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
             $resultPgd = $myDatabase->query($updatePGD, MYSQLI_STORE_RESULT);
         }
 
-        if( $typeOKS == 3){
+        if ($typeOKS == 3){
             $sql = "UPDATE `temp_oks_akt_others` SET status = 2 WHERE pg_id = {$pgId}";
             $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
-        }else if($typeOKS == 2){
+        } else if($typeOKS == 2){
             $sql = "UPDATE temp_oks_akt oks
                     INNER JOIN pengajuan_general_detail pgd ON pgd.`pgd_id` = oks.`pgd_id`
                     SET oks.`status` = 2
@@ -177,7 +177,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
         echo $return_value;
         die();
         // </editor-fold>
-    }elseif ($_POST['_method'] == 'RETURNED_INV') {
+    } elseif ($_POST['_method'] == 'RETURNED_INV') {
         $rejectRemarks = $_POST['rejectRemarks'];
         $invId = $_POST['invId'];
         $pgId = $_POST['pgId']; 
@@ -261,18 +261,21 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 }
 
                             }
-                    }
+                        }
                         $sql = "SELECT GROUP_CONCAT(invoice_detail_id) AS invoice_detail_id FROM invoice_detail WHERE invoice_id = {$invId}";
                         $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
-                        if ($result->num_rows == 1) {
-                            $row = $result->fetch_object();
-                            $invoiceId = $row->invoice_detail_id;
 
-                            $sqldp = "UPDATE invoice_dp SET "
-                                . "status = 1 "
-                                . " WHERE invoice_detail_id IN ({$invoiceId})";
-                            $resultdp = $myDatabase->query($sqldp, MYSQLI_STORE_RESULT);
-                        }
+                        // Update Status Invoice DP pada Return Invoice
+                        // if ($result->num_rows == 1) {
+                        //     $row = $result->fetch_object();
+                        //     $invoiceId = $row->invoice_detail_id;
+
+                        //     $sqldp = "UPDATE invoice_dp SET "
+                        //         . "status = 1 "
+                        //         . " WHERE invoice_detail_id IN ({$invoiceId})";
+                        //     $resultdp = $myDatabase->query($sqldp, MYSQLI_STORE_RESULT);
+                        // }
+
                         //add by yeni
                         $sqlU = "UPDATE pengajuan_general set invoice_id = NULL, invoice_old_id = {$invId} where invoice_id = {$invId}";
                         $resultU = $myDatabase->query($sqlU, MYSQLI_STORE_RESULT);
@@ -533,18 +536,22 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             // </editor-fold>
 
                             // <editor-fold defaultstate="collapsed" desc="Query for INSERT Pengajuan General Detail">
-                            $sqlPODetail = "SELECT a.account_id as accountId,a.account_type as accountType,pd.*, i.item_name, (case when pd.pphstatus = 1 then pd.pph else 0 end) as pph,
-			                    (case when pd.ppnstatus = 1 then pd.ppn else 0 end) as ppn,
-			                    (pd.amount+(case when pd.ppnstatus = 1 then pd.ppn else 0 end)-(case when pd.pphstatus = 1 then pd.pph else 0 end)) as grandtotal,
-                                u.uom_type,s.`stockpile_name`, sh.`shipment_no`, pd.idpo_detail
-                                from po_detail pd
-                                left join master_item i on i.idmaster_item = pd.item_id
-								LEFT JOIN master_groupitem mg ON mg.idmaster_groupitem = i.group_itemid
-								LEFT JOIN ACCOUNT a ON a.account_id = mg.account_id
-                                left join uom u on u.idUOM = i.uom_id
+                            $sqlPODetail = "SELECT 
+                            (CASE WHEN idp.invoice_dp IS NOT NULL THEN (idp.amount_payment + idp.ppn_value) - idp.pph_value ELSE 0 END) AS full_down_payment,
+                            a.account_id AS accountId,a.account_type AS accountType,pd.*, i.item_name, 
+                                (CASE WHEN pd.pphstatus = 1 THEN pd.pph ELSE 0 END) AS pph,
+                                (CASE WHEN pd.ppnstatus = 1 THEN pd.ppn ELSE 0 END) AS ppn,
+                                (pd.amount+(CASE WHEN pd.ppnstatus = 1 THEN pd.ppn ELSE 0 END)-(CASE WHEN pd.pphstatus = 1 THEN pd.pph ELSE 0 END)) AS grandtotal,
+                            u.uom_type,s.`stockpile_name`, sh.`shipment_no`, pd.idpo_detail
+                            FROM po_detail pd
+                                LEFT JOIN master_item i ON i.idmaster_item = pd.item_id
+                                LEFT JOIN master_groupitem mg ON mg.idmaster_groupitem = i.group_itemid
+                                LEFT JOIN ACCOUNT a ON a.account_id = mg.account_id
+                                LEFT JOIN uom u ON u.idUOM = i.uom_id
                                 LEFT JOIN stockpile s ON s.`stockpile_id` = pd.`stockpile_id`
                                 LEFT JOIN shipment sh ON sh.`shipment_id` = pd.`shipment_id`
-                                WHERE no_po = '{$noPO}' ORDER BY idpo_detail ASC";
+                                LEFT JOIN invoice_dp idp ON idp.`po_detail_id_dp` = pd.`idpo_detail`
+                            WHERE no_po = '{$noPO}' ORDER BY idpo_detail ASC";
 
                             $resultPODetail = $myDatabase->query($sqlPODetail, MYSQLI_STORE_RESULT);
 
@@ -578,7 +585,9 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 $tamount = ($amount2 + $ppn2 - $pph2);
                                 // $tamount = $tamount * $termin / 100;
                                 $tamountConverted = $tamount *  $exchangeRate;
-                                $dpAmount = 0;
+                                $dpAmount = $row->full_down_payment;
+                                // $dpAmount = 0;
+                                $tamountPengajuan = $tamountConverted - $dpAmount;
                                 $vendorType = 'General';
 
                                 $notes = $row->notes;
@@ -587,12 +596,16 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 $sql = "INSERT INTO `pengajuan_general_detail` (po_detail_id, pg_id, invoice_method_detail, type, account_id, poId, 
                                         vendor_type ,vendor_name,general_vendor_id, vendor_email, shipment_id, stockpile_remark, qty, price, termin, amount, 
                                         amount_converted, currency_id, exchange_rate, ppnID, ppn, ppn_converted, pphID, pph, pph_converted,
-                                         tamount, tamount_converted, dp_amount, notes,gv_bank_id, entry_by, entry_date, status) VALUES ("
+                                         tamount, tamount_converted, dp_amount, tamount_pengajuan, notes,gv_bank_id, entry_by, entry_date, status) VALUES ("
                                     . "{$poDetailId},{$pgId},{$invoiceMethodDetail},{$invoiceType},{$accountId}, {$poId},'{$vendorType}','{$vendorName}', {$generalVendorId}, '{$gvEmail}', {$shipmentId1}, 
                                     {$stockpileId2}, '{$qty}', '{$price}', '{$termin}', '{$amount2}', '{$amountConverted}', {$currencyId}, '{$exchangeRate}', {$ppnID} ,'{$ppn2}', '{$ppnConverted}', 
-                                    {$pphID}, '{$pph2}', '{$pphConverted}', '{$tamount}', '{$tamountConverted}', '{$dpAmount}', '{$notes}',{$gvBankId} ,{$_SESSION['userId']}, 
+                                    {$pphID}, '{$pph2}', '{$pphConverted}', '{$tamount}', '{$tamountConverted}', '{$dpAmount}', '{$tamountPengajuan}', '{$notes}',{$gvBankId} ,{$_SESSION['userId']}, 
                                     STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'), 0)";
                                 $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+                                $pgdId = $myDatabase->insert_id;
+
+                            $sql2 = "UPDATE `invoice_dp` SET pengajuan_detail_id = {$pgdId} WHERE po_detail_id_dp = {$poDetailId}";
+                            $result2 = $myDatabase->query($sql2, MYSQLI_STORE_RESULT);
                             
                             //INSERT TOTAL PRICE
                             $sqlA = "SELECT * FROM pengajuan_general_detail WHERE pg_id = {$pgId}";
@@ -1313,7 +1326,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                 echo "<br> DOLLAR SQL2 " . $invoiceMethod .' , '.$invoiceType.  "<br><br>";
 
                 //INSERT INVOICE-DP
-                if (isset($_POST['checkedSlips2'])) {
+                /* if (isset($_POST['checkedSlips2'])) {
                     $checks2 = $_POST['checkedSlips2'];
                     $checks3 = $_POST['checkedSlips3'];
                     $checks4 = $_POST['checkedSlips4'];
@@ -1332,14 +1345,14 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             }
                         }
                     }
-                }
+                } */
 
                 // echo $slipNos2;
-                $sqlD = "INSERT INTO invoice_dp (pengajuan_detail_id, invoice_detail_dp, amount_payment, ppn_value, pph_value) VALUES {$slipNos2}";
-                $resultD = $myDatabase->query($sqlD, MYSQLI_STORE_RESULT);
+                /* $sqlD = "INSERT INTO invoice_dp (pengajuan_detail_id, invoice_detail_dp, amount_payment, ppn_value, pph_value) VALUES {$slipNos2}";
+                $resultD = $myDatabase->query($sqlD, MYSQLI_STORE_RESULT); */
                 // echo " run => " . $sqlD;
 
-                if ($resultD != false) {
+                /* if ($resultD != false) {
                     // echo 'salah';
                     //Update DP amount 
                     $downPayment = 0;
@@ -1378,13 +1391,13 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             $sql2 = "UPDATE `pengajuan_general_detail` SET dp_amount = {$downPayment}, tamount_pengajuan = {$tamountPengajuan} WHERE pgd_id = {$_POST['pgdId']}";
                             $result2 = $myDatabase->query($sql2, MYSQLI_STORE_RESULT);
                     }
-                }
+                } */
 
                 //INSERT TOTAL PRICE
-                $sqlA = "SELECT * FROM pengajuan_general_detail WHERE pg_id = {$pgId}";
-                $resultA = $myDatabase->query($sqlA, MYSQLI_STORE_RESULT);
+                /* $sqlA = "SELECT * FROM pengajuan_general_detail WHERE pg_id = {$pgId}";
+                $resultA = $myDatabase->query($sqlA, MYSQLI_STORE_RESULT); */
 
-                if ($resultA !== false && $resultA->num_rows > 0) {
+                /* if ($resultA !== false && $resultA->num_rows > 0) {
                     $totalDpp = 0;
                     $totalPPh = 0;
                     $totalPPn = 0;
@@ -1405,7 +1418,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             total_pph = {$totalPPh}, total_ppn = {$totalPPn}, total_amount = {$totalAmount} WHERE pengajuan_general_id = {$pgId}";
                     $resultB = $myDatabase->query($sqlB, MYSQLI_STORE_RESULT);
                  //   echo " B " . $sqlB;
-                }
+                } */
 
             } else {
                 $return_value = '|FAIL|Pengajuan General Detail failed to Update data.|';
@@ -2167,7 +2180,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 <th>Amount</th>
                                 <th>PPN</th>
                                 <th>PPh</th>
-                                <th>Down payment</th>
+                                <th>Down Payment</th>
                                 <th>Total prediksi</th>
                                 <th>Total pengajuan</th>
                                 </tr>
@@ -2379,6 +2392,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     $gvBankId = $myDatabase->real_escape_string($_POST['gvBankId']);
     $gvEmail = $myDatabase->real_escape_string($_POST['gvEmail']);
     $idPOHDR = $myDatabase->real_escape_string($_POST['idPOHDR']);
+    $POMethod = $myDatabase->real_escape_string($_POST['POMethod']);
 
     if ($currencyId == 1) {
         $exchangeRate = 0;
@@ -2409,19 +2423,20 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
         $lastExplode = count($splitPONo) - 1;
         $nextPONo = ((float)$splitPONo[$lastExplode]) + 1;
         $PO_number = $checkPONo . '/' . $nextPONo;
-    } else {
+    } else {;
         $PO_number = $checkPONo . '/1';
     }
 
     if (!isset($idPOHDR) || $idPOHDR == '') {
         $sql = "INSERT INTO `po_hdr`
 					(`no_po`,`general_vendor_id`,gv_email,`no_penawaran`,`tanggal`,`memo`,`entry_by`,`entry_date`,`currency_id`,`exchangerate`,`grandtotal`,`stockpile_id`,`toc`,`sign_id`,
-					`totalppn`,`totalpph`,`totalall`,`bank_id`)
+					`totalppn`,`totalpph`,`totalall`,`bank_id`,`po_method`)
 				VALUES
 					('{$PO_number}',{$generalVendorId}, '{$gvEmail}', '{$nopenawaran}',STR_TO_DATE('{$tanggalpo}','%d/%m/%Y'),'{$remarks}',{$_SESSION['userId']}, 
                         STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$currencyId},{$exchangeRate},{$grandTotal},{$stockpileId},'{$toc}',{$signId},
-                        {$totalppn},{$totalpph},{$totalall},{$gvBankId});";
+                        {$totalppn},{$totalpph},{$totalall},{$gvBankId},{$POMethod});";
         $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+
         if ($result !== false) {
             $id = $myDatabase->insert_id;
             $sqlUpdatePODETAIl = "UPDATE po_detail SET po_hdr_id = {$id}, no_po = '{$PO_number}' WHERE po_hdr_id IS NULL AND DATE_FORMAT(entry_date,'%Y-%m-%d') = '{$todayDate}' AND entry_by = {$_SESSION['userId']}";
@@ -2443,8 +2458,8 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
         if ($result !== false) {
             // echo $sql;
             $id = $myDatabase->insert_id;
-            $return_value = '|OK|PO has successfully inserted/updated.' . $addMessage . '|' . $id . '|';
-            unset($_SESSION['PO']);
+            $return_value = '|OK|PO has successfully inserted/updated.' . $addMessage . '|' . $id . '|' . $POId . '|';
+            // unset($_SESSION['PO']);
         } else {
             $return_value = '|FAIL|Insert/update PO failed.' . $addMessage . '||';
             // echo $sql;
@@ -2479,6 +2494,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     $method_ = $myDatabase->real_escape_string($_POST['method_']);
     $pod_id = $myDatabase->real_escape_string($_POST['pod_id']);
     $termin = $myDatabase->real_escape_string($_POST['termin']);
+    $POMethod = $myDatabase->real_escape_string($_POST['POMethod']);
 
     // </editor-fold>
     if ($pphpoID == 0) {
@@ -2515,20 +2531,90 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
         if ($result->num_rows == 0) {
             if (isset($idPOHDR) && $idPOHDR != '') {
                 $sql = "INSERT INTO `po_detail`
-                (`no_po`,`po_hdr_id`,`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`,`notes`, general_vendor_id, termin)
+                (`no_po`,`po_hdr_id`,`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`,`notes`, general_vendor_id, termin, po_method_detail)
                 VALUES
                 ('{$noPO}',{$idPOHDR},{$qty},{$price},{$amount},{$ppnpo},{$pphpo},
-                {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus},'{$notes}', {$generalVendorId}, {$termin});";
+                {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus},'{$notes}', {$generalVendorId}, {$termin}, {$POMethod});";
             } else {
                 $sql = "INSERT INTO `po_detail`
-                (`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`,`notes`, general_vendor_id, termin)
+                (`qty`,`harga`,`amount`,`ppn`,`pph`,`ppn_id`,`pph_id`,`entry_by`,`entry_date`,`pphstatus`,`stockpile_id`,`item_id`,`shipment_id`, `ppnstatus`,`notes`, general_vendor_id, termin, po_method_detail)
                 VALUES
                 ({$qty},{$price},{$amount},{$ppnpo},{$pphpo},
-                {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus},'{$notes}', {$generalVendorId}, {$termin});";
+                {$ppnpoID},{$pphpoID},{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'),{$pphstatus},{$stockpileId},{$itemId},{$shipmentId},{$ppnpostatus},'{$notes}', {$generalVendorId}, {$termin}, {$POMethod});";
             }
             $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+            $PODetailId = $myDatabase->insert_id;
 
             if ($result !== false) {
+                //INSERT INVOICE-DP
+                if (isset($_POST['checkedSlips2'])) {
+                    $checks2 = $_POST['checkedSlips2'];
+                    $checks3 = $_POST['checkedSlips3'];
+                    $checks4 = $_POST['checkedSlips4'];
+                    if (isset($_POST['checkedSlips'])) {
+                        $checks = $_POST['checkedSlips'];
+                    } else {
+                        $checks = '';
+                    }
+
+                    for ($i = 0; $i < sizeof($checks2); $i++) {
+                        if ($checks[$i] != '') {
+                            if ($slipNos2 == '') {
+                                $slipNos2 .= '(' . $PODetailId . ',' . $checks[$i] . ',' . $checks2[$i] . ',' . $checks3[$i] . ',' . $checks4[$i] . ')';
+                            } else {
+                                $slipNos2 .= ',' . $PODetailId . ',' . '(' . $checks[$i] . ',' . $checks2[$i] . ',' . $checks3[$i] . ',' . $checks4[$i] . ')';
+                            }
+                        }
+                    }
+                }
+
+                // var_dump($slipNos2);
+                // die();
+                $sqlD = "INSERT INTO invoice_dp (po_detail_id_dp, invoice_detail_dp, amount_payment, ppn_value, pph_value) VALUES {$slipNos2}";
+                $resultD = $myDatabase->query($sqlD, MYSQLI_STORE_RESULT);
+
+                if ($resultD != false) {
+                    // echo 'salah';
+                    //Update DP amount 
+                    $downPayment = 0;
+                    $tamountPengajuan = 0;
+                    $sqlDP = "SELECT (idp.amount_payment + idp.ppn_value) - idp.pph_value AS down_payment, idp.ppn_value as ppn, idp.pph_value as pph
+                              FROM invoice_dp idp
+                             WHERE idp.status = 0 AND idp.po_detail_id_dp= {$PODetailId}";
+                    $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
+                    if ($resultDP !== false && $resultDP->num_rows > 0) {
+                        $rowDP = $resultDP->fetch_object();
+                        if ($rowDP->ppn == 0) {
+                                $dp_ppn = 0;
+                            } else {
+                                //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                                $dp_ppn = $rowDP->ppn;
+                            }
+            
+                            if ($rowDP->pph == 0) {
+                                $dp_pph = 0;
+                            } else {
+                                //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                                $dp_pph = $rowDP->pph;
+                            }
+            
+            
+                            if ($rowDP->down_payment != 0) {
+                                //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                                //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                                $downPayment = $rowDP->down_payment;
+                                // echo " AKA " . $downPayment;
+                            } else {
+                                $downPayment = 0;
+                            }
+
+                            $amountPO = ($amount + $ppnpo) - $pphpo;
+                            $tamountPO = $amountPO - $downPayment;
+                            $sql2 = "UPDATE `po_detail` SET down_payment = {$downPayment}, tamount_po = {$tamountPO} WHERE idpo_detail = {$PODetailId}";
+                            $result2 = $myDatabase->query($sql2, MYSQLI_STORE_RESULT);
+                    }
+                }
+
                 $return_value = '|OK|Data has successfully inserted.||';
             } else {
                 echo $sql;
@@ -2551,7 +2637,8 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                     . "ppnstatus = {$ppnpostatus}, "
                     . "pph_id = {$pphpoID}, "
                     . "pph = {$pphpo}, "
-                    . "pphstatus = {$pphstatus} "
+                    . "pphstatus = {$pphstatus}, "
+                    . "po_method_detail = {$POMethod} "
                     . "WHERE idpo_detail = {$pod_id} ";
         $resultUpdate = $myDatabase->query($sqlUpdate, MYSQLI_STORE_RESULT);
         if ($resultUpdate !== false) {
@@ -2564,6 +2651,66 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     }
     //$return_value;
     echo $return_value;
+    // </editor-fold>
+} elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete_po_detail') {
+    // <editor-fold defaultstate="collapsed" desc="delete_user">
+    
+    $return_value = '';
+    
+    // <editor-fold defaultstate="collapsed" desc="POST variables">
+    $poDetailId = $myDatabase->real_escape_string($_POST['poDetailId']);
+    // </editor-fold>
+    
+    if($poDetailId != '') {
+		
+        $sql = "DELETE FROM `po_detail` WHERE idpo_detail = {$poDetailId}";
+        $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+
+        if($result !== false) {
+            $sqlDP = "DELETE FROM `invoice_dp` WHERE po_detail_id_dp = {$poDetailId}";
+            $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
+
+            $return_value = '|OK|Detail has successfully deleted.|';
+        } else {
+            $return_value = '|FAIL|Delete detail failed.|';
+        }
+    } else {
+        $return_value = '|FAIL|Record not found.|';
+    }
+    
+    echo $return_value;
+    // </editor-fold>
+} elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'return_PO_data') {
+    // <editor-fold defaultstate="collapsed" desc="RETURN PO DATA">
+    $return_value = '';
+    $rejectRemarks  = $myDatabase->real_escape_string($_POST['rejectRemarks']);
+    $idPOHDR  = $myDatabase->real_escape_string($_POST['idPOHDR']);
+    $NoPOId  = $myDatabase->real_escape_string($_POST['NoPOId']);
+
+    //Update Status PO Header
+    $sqlUpdatePOHdr = "UPDATE `po_hdr` SET status = 4, reject_remarks = '{$rejectRemarks}', reject_date = STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s') WHERE idpo_hdr = {$idPOHDR}";
+    $result = $myDatabase->query($sqlUpdatePOHdr, MYSQLI_STORE_RESULT);
+
+    if ($result != false) {
+        $sql = "SELECT GROUP_CONCAT(idpo_detail) AS po_detail_id FROM po_detail WHERE no_po = '{$NoPOId}'";
+        echo($sql);
+        $resultData = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
+        // Update Status Invoice DP Saat Cancel PO
+        if ($resultData->num_rows == 1) {
+            $row = $resultData->fetch_object();
+            $PODetailId = $row->po_detail_id;
+
+            $sqldp = "UPDATE invoice_dp SET "
+                . "status = 1 "
+                . " WHERE po_detail_id_dp IN ({$PODetailId})";
+            $resultdp = $myDatabase->query($sqldp, MYSQLI_STORE_RESULT);
+        }
+        $return_value = '|OK|. Cancel has successfully ||';
+    } else {
+        $return_value = '|Fail|. Cancel fail ||';
+    }
+    echo $return_value;
+    die();
     // </editor-fold>
 } elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_return_data') {
     // <editor-fold defaultstate="collapsed" desc="CRUD PENGAJUAN RETURN DATA">

@@ -12,7 +12,7 @@ require_once PATH_INCLUDE . DS . 'db_init.php';
 $_SESSION['menu_name'] = 'PO';
 
 $readonlyProperty = '';
-$disabledProperty = '';
+$disableProperty = '';
 $whereProperty = '';
 $date = new DateTime();
 // <editor-fold defaultstate="collapsed" desc="Variable for Contract Data">
@@ -52,17 +52,18 @@ if (isset($_POST['POId']) && $_POST['POId'] != '') {
 
     $POId = $_POST['POId'];
 
-    $readonlyProperty = ' readonly ';
-    $disabledProperty = ' disabled ';
+    // $readonlyProperty = ' readonly ';
+    // $disabledProperty = ' disabled ';
 
     // <editor-fold defaultstate="collapsed" desc="Query for Contract Data">
 
 
     $sql = "SELECT
-			ph.*,gv.*,DATE_FORMAT(ph.tanggal, '%d/%m/%Y') as tanggal
+			ph.*,gv.*,DATE_FORMAT(ph.tanggal, '%d/%m/%Y') as tanggal,pg.status_pengajuan, ph.status AS po_status
 			FROM po_hdr ph
 			LEFT JOIN general_vendor gv ON gv.general_vendor_id = ph.general_vendor_id
 			LEFT JOIN master_sign si ON si.idmaster_sign = ph.sign_id
+            LEFT JOIN pengajuan_general pg ON pg.po_id = ph.idpo_hdr
             WHERE ph.no_po = '{$POId}'
             ORDER BY ph.idpo_hdr ASC
             ";
@@ -81,7 +82,12 @@ if (isset($_POST['POId']) && $_POST['POId'] != '') {
         $idPOHDR = $rowData->idpo_hdr;
         $gvBankId = $rowData->bank_id;
         $gvEmail = $rowData->gv_email;
-    
+        $POMethod = $rowData->po_method;
+
+        if($rowData->po_status == 5) {
+            $disableProperty = 'disabled';
+            $readonlyProperty = 'readonly';
+        }
     }
 
     // </editor-fold>
@@ -262,13 +268,13 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
             }
         });
 
-        $('#POMethod').change(function () {
-            if (document.getElementById('POMethod').value != '') {
-                $('#addPO').show();
-            } else {
-                $('#addPO').hide();
-            }
-        });
+        // $('#POMethod').change(function () {
+        //     if (document.getElementById('POMethod').value != '') {
+        //         $('#addPO').show();
+        //     } else {
+        //         $('#addPO').hide();
+        //     }
+        // });
 
 
         $("#PODataForm").validate({
@@ -377,7 +383,8 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 gvEmail: document.getElementById('gvEmail').value,
                 generatedPONo: document.getElementById('generatedPONo').value,
                 requestDate: document.getElementById('requestDate').value,
-                POId: document.getElementById('POId').value
+                POId: document.getElementById('POId').value,
+                POMethod: $('select[id="POMethod"]').val()
             });
         });
 
@@ -399,7 +406,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
 
     function deletePODetail(idpo_detail) {
         $.ajax({
-            url: './data_processing.php',
+            url: './irvan.php',
             method: 'POST',
             data: {
                 action: 'delete_po_detail',
@@ -419,7 +426,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         $('#insertModal').modal('show');
         $('#insertModalForm').load('forms/po-data.php', {
             detail_poId: idpo_detail,
-            generalVendorId: $('select[id="generalVendorId"]').val()
+            generalVendorId: $('select[id="generalVendorId"]').val(), POMethod: $('select[id="POMethod"]').val()
         }, iAmACallbackFunction2);	//and hide the rotating gif
     }
 
@@ -567,6 +574,38 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
             startView: 0
         });
     });
+
+    function cancelPO() {
+        $.blockUI({ message: '<h4>Please wait...</h4>' }); 
+        $.ajax({
+            url: './irvan.php',
+            method: 'POST',
+            data: {
+                action: 'return_PO_data',
+                idPOHDR: document.getElementById('idPOHDR').value,
+                NoPOId: document.getElementById('POId').value,
+                rejectRemarks: document.getElementById('reject_remarks').value,
+            },
+            success: function (data) {
+                console.log(data);
+                var returnVal = data.split('|');
+                if (parseInt(returnVal[3]) != 0)	//if no errors
+                {
+                    alertify.set({
+                        labels: {
+                            ok: "OK"
+                        }
+                    });
+                    alertify.alert(returnVal[2]);
+
+                    if (returnVal[1] == 'OK') {
+                        $('#pageContent').load('views/po.php', {}, iAmACallbackFunction);
+                    }
+                    $('#submitButton').attr("disabled", false);
+                }
+            }
+        });
+    }
 </script>
 
 <form method="POst" id="PODataForm">
@@ -609,6 +648,17 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
 
     </div>
     <div class="row-fluid" style="margin-bottom: 7px;">
+        <div class="span4 lightblue">
+            <label>Invoice Method <span style="color: red;">*</span></label>
+            <?php if($POId == '') {
+            createCombo("SELECT '1' as id, 'Full Payment' as info UNION
+              		   SELECT '2' as id, 'Down Payment' as info;", $POMethod, "", "POMethod", "id", "info", "", "", "select2combobox75", 1);
+            } else {
+            createCombo("SELECT '1' as id, 'Full Payment' as info UNION
+                            SELECT '2' as id, 'Down Payment' as info;", $POMethod, "disabled", "POMethod", "id", "info", "", "", "select2combobox75", 1); } ?>
+            <!-- <input type="text" value="Full Payment" readonly>
+            <input type="hidden" value="1" id="POMethod"> -->
+        </div>
         <div class="span4 lightblue">
             <label>Currency <span style="color: red;">*</span></label>
             <?php
@@ -667,24 +717,41 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
     <div class="row-fluid" style="margin-bottom: 7px;">
         <div class="span8 lightblue">
             <label>Remarks</label>
-            <textarea class="span12" rows="3" tabindex="" id="remarks" name="remarks"><?php echo $remarks; ?></textarea>
+            <textarea class="span12" rows="3" tabindex="" id="remarks" name="remarks" <?php echo $readonlyProperty; ?>><?php echo $remarks; ?></textarea>
         </div>
 
     </div>
     <div class="row-fluid" style="margin-bottom: 7px;">
         <div class="span8 lightblue">
             <label>Terms of Condition</label>
-            <textarea class="span12" rows="3" tabindex="" id="toc" name="toc"><?php echo $toc; ?></textarea>
+            <textarea class="span12" rows="3" tabindex="" id="toc" name="toc" <?php echo $readonlyProperty; ?>><?php echo $toc; ?></textarea>
         </div>
 
     </div>
-    <div class="row-fluid">
+    <div class="row-fluid" style="margin-bottom: 15px;">
         <div class="span12 lightblue">
             <button class="btn btn-primary" <?php echo $disableProperty; ?>>Submit</button>
             <button class="btn" type="button" onclick="back()">Back</button>
         </div>
     </div>
+
+    <?php if($POId != '') { ?>
+    <div class="row-fluid" style="margin-bottom: 7px;">
+        <div class="span8 lightblue">
+            <label>Reject Remarks</label>
+            <textarea class="span12" rows="3" tabindex="" id="reject_remarks"
+                    name="reject_remarks" <?php echo $readonlyProperty; ?>><?php echo $rejectRemarks; ?></textarea>
+        </div>
+    </div>
+
+    <div class="row-fluid">
+        <div class="span12 lightblue">
+            <button class="btn btn-danger" type="button" <?php echo $disableProperty; ?> onclick="cancelPO()">CANCEL</button>
+        </div>
+    </div>
+    <?php } ?>
 </form>
+
 <div id="insertModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="insertModalLabel"
      aria-hidden="true" style="width:1000px; height:500px; margin-left:-500px;">
     <form id="insertForm" method="POst" style="margin: 0px;">

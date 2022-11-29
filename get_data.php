@@ -186,7 +186,7 @@ switch ($_POST['action']) {
         refreshInvoice($_POST['invoiceId'], $_POST['paymentMethod'], $_POST['ppn1'], $_POST['pph1']);
         break;
     case "setInvoiceDP":
-        setInvoiceDP($_POST['generalVendorId'], $_POST['checkedSlips'], $_POST['checkedSlips2'], $_POST['checkedSlips3'], $_POST['checkedSlips4'], $_POST['ppn1'], $_POST['pph1']);
+        setInvoiceDP($_POST['generalVendorId'], $_POST['method'], $_POST['checkedSlips'], $_POST['checkedSlips2'], $_POST['checkedSlips3'], $_POST['checkedSlips4'], $_POST['ppn1'], $_POST['pph1']);
         break;
     case "setInvoiceDetail":
         setInvoiceDetail();
@@ -5646,6 +5646,7 @@ function setPODetail($poID, $idPOHDR, $gvid, $currentDate)
                                 <th>DPP</th>
                                 <th>PPN</th>
                                 <th>PPH</th>
+                                <th>Down Payment</th>
                                 <th>Total</th>
                                 <th>Action</th>
                             </tr>
@@ -5653,17 +5654,66 @@ function setPODetail($poID, $idPOHDR, $gvid, $currentDate)
         $returnValue .= '<tbody>';
 
 
+        $totalPrice = 0;
+        $totalpph = 0;
+        $totalppn = 0;
+        $totalDownPayment = 0;
+        $totalall = 0;
         while ($row = $result->fetch_object()) {
 
+            $downPayment = 0;
+            // $totalPrice = 0;
+            // $totalpph = 0;
+            // $totalppn = 0;
+            // $totalDownPayment = 0;
+            // $totalall = 0;
+
+            $sqlDP = "SELECT SUM((idp.amount_payment + idp.ppn_value) - idp.pph_value) AS down_payment,
+                       idp.ppn_value AS ppn, 
+                       idp.pph_value AS pph 
+                        FROM invoice_dp idp 
+                        WHERE idp.status = 0 AND idp.po_detail_id_dp = {$row->idpo_detail}";
+            $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
+            if ($resultDP !== false && $resultDP->num_rows > 0) {
+
+                $rowDP = $resultDP->fetch_object();
+
+                if ($rowDP->ppn == 0) {
+                    $dp_ppn = 0;
+                } else {
+                    //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                    $dp_ppn = $rowDP->ppn;
+                }
+
+                if ($rowDP->pph == 0) {
+                    $dp_pph = 0;
+                } else {
+                    //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                    $dp_pph = $rowDP->pph;
+                }
+
+
+                if ($rowDP->down_payment != 0) {
+                    //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                    //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                    $downPayment = $rowDP->down_payment;
+                    // echo " AKA " . $downPayment;
+                } else {
+                    $downPayment = 0;
+                }
+            }
+
+            $grandTotal = $row->grandtotal - $downPayment;
             $tamount = $row->amount;
             $tpph = $row->pph;
             $tppn = $row->ppn;
-            $tgtotal = $row->grandtotal;
+            $tgtotal = $grandTotal;
             $totalPrice = $totalPrice + $tamount;
             $totalpph = $totalpph + $tpph;
             $totalppn = $totalppn + $tppn;
+            $totalDownPayment = $totalDownPayment + $downPayment;
             $totalall = $totalall + $tgtotal;
-
+            
             $returnValue .= '<tr>';
             /* if($checkedSlips != '') {
                 $pos = strpos($checkedSlips, $row->invoice_detail_id);
@@ -5695,7 +5745,8 @@ function setPODetail($poID, $idPOHDR, $gvid, $currentDate)
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->amount, 4, ".", ",") . '</td>';
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->ppn, 4, ".", ",") . '</td>';
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->pph, 4, ".", ",") . '</td>';
-            $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->grandtotal, 4, ".", ",") . '</td>';
+            $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($downPayment, 2, ".", ",") . '</td>';
+            $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($grandTotal, 4, ".", ",") . '</td>';
 
             $returnValue .= '<td style="text-align: Left; width: 10%;">
                                 <a href="#" id="edit|PO|' . $row->idpo_detail . '" role="button" title="Edit" 
@@ -5720,6 +5771,7 @@ function setPODetail($poID, $idPOHDR, $gvid, $currentDate)
         $returnValue .= '<td colspan="1" style="text-align: right;">' . number_format($grandTotal, 4, ".", ",") . '</td>';
         $returnValue .= '<td colspan="1" style="text-align: right;">' . number_format($totalppn, 4, ".", ",") . '</td>';
         $returnValue .= '<td colspan="1" style="text-align: right;">' . number_format($totalpph, 4, ".", ",") . '</td>';
+        $returnValue .= '<td colspan="1" style="text-align: right;">' . number_format($totalDownPayment, 4, ".", ",") . '</td>';
         $returnValue .= '<td colspan="1" style="text-align: right;">' . number_format($totalall, 4, ".", ",") . '</td>';
         $returnValue .= '<td></td>';
         $returnValue .= '</tr>';
@@ -7242,10 +7294,19 @@ WHERE idp.status = 0 AND idp.invoice_detail_id = {$row->invoice_detail_id}";
     echo $returnValue;
 }
 
-function setInvoiceDP($generalVendorId, $ppn1, $pph1)
+function setInvoiceDP($generalVendorId,$method, $ppn1)
 {
     global $myDatabase;
     $returnValue = '';
+    $whereProperty = '';
+
+    if ($method == "INSERT") {
+        $whereProperty = 'AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
+        ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) > 0.001';
+    } else {
+        $whereProperty = 'AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
+        ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) < 0.001';
+    }
 
     $sql = "SELECT i.*, id.*,gv.`pph` AS dp_pph, gv.`ppn` AS dp_ppn,
             (SELECT SUM(amount_payment) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND status = 0) AS total_dp
@@ -7253,9 +7314,9 @@ function setInvoiceDP($generalVendorId, $ppn1, $pph1)
             LEFT JOIN invoice_detail id ON i.`invoice_id` = id.`invoice_id`
             LEFT JOIN general_vendor gv ON gv.`general_vendor_id` = id.`general_vendor_id`
             WHERE id.general_vendor_id = {$generalVendorId} AND id.invoice_method_detail = 2 AND id.invoice_detail_status = 0 AND i.company_id = {$_SESSION['companyId']} AND i.`payment_status` != 2
-            AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
-            ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) > 0.001
+            $whereProperty
             ORDER BY i.invoice_id DESC, id.invoice_detail_id DESC";
+
     $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
     // echo " AI " . $sql;
 
@@ -7273,10 +7334,12 @@ function setInvoiceDP($generalVendorId, $ppn1, $pph1)
                                     <th>PPN</th>
                                     <th>PPh</th>
                                     <th>Available DP (Include PPN & PPh)</th>
-                                    <th>Available DP (DPP)</th>
-                                    <th>Input Amount DPP</th>
-                                    <th>
-                                    </th>
+                                    <th>Available DP (DPP)</th>';
+                                    if ($method == 'INSERT') { 
+                   $returnValue .= '<th>Input Amount DPP</th>
+                                    <th>'; 
+                                     } 
+                   $returnValue .='</th>
                                 </tr>
                             </thead>';
         $returnValue .= '<tbody>';
@@ -7315,11 +7378,16 @@ function setInvoiceDP($generalVendorId, $ppn1, $pph1)
                 $dp_pph = 0;
             }
 
-            $total = ($dppTotalPrice + $totalPPN) - $totalPPh;
-            $total2 = ($row->total_dp + $dp_ppn) - $dp_pph;
-            $total_dp = $total - $total2;
 			
-			$total_dp_dpp = $dppTotalPrice - $row->total_dp;
+            if ($method == "INSERT") {
+                $total = ($dppTotalPrice + $totalPPN) - $totalPPh;
+                $total2 = ($row->total_dp + $dp_ppn) - $dp_pph;
+                $total_dp = $total - $total2;
+                $total_dp_dpp = $dppTotalPrice - $row->total_dp;
+            } else {
+                $total_dp = ($dppTotalPrice + $totalPPN) - $totalPPh;
+                $total_dp_dpp = $dppTotalPrice;
+            }
             
 
             $returnValue .= '<tr>';
@@ -7337,26 +7405,28 @@ function setInvoiceDP($generalVendorId, $ppn1, $pph1)
             $returnValue .= '<td style="text-align: right; width: 15%;">' . number_format($total_dp, 8, ".", ",") . '</td>';
 			$returnValue .= '<td style="text-align: right; width: 15%;">' . number_format($total_dp_dpp, 8, ".", ",") . '</td>';
             //$returnValue .= '<td style="text-align: right; width: 15%;">'. number_format($total_dp, 2, ".", ",") .'</td>';
-            $returnValue .= '<td style="text-align: right;"><input type="text" id="paymentTotal" name="checkedSlips2[' . $count . ']" max="'. $total_dp_dpp .'" /></td>';
-            if ($checkedSlips != '') {
-                $pos = strpos($checkedSlips, $row->invoice_detail_id);
-
-                if ($pos === false) {
-                    //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" /></td>';
-                    $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"   value="' . $row->invoice_detail_id . '" /></td>';
+            if ($method == 'INSERT') {
+                $returnValue .= '<td style="text-align: right;"><input type="text" id="paymentTotal" name="checkedSlips2[' . $count . ']" max="'. $total_dp_dpp .'" /></td>';
+                if ($checkedSlips != '') {
+                    $pos = strpos($checkedSlips, $row->invoice_detail_id);
+    
+                    if ($pos === false) {
+                        //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" /></td>';
+                        $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"   value="' . $row->invoice_detail_id . '" /></td>';
+                    } else {
+                        //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" checked /></td>';
+                        $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"  value="' . $row->invoice_detail_id . '" checked /></td>';
+    
+                        //$dppPrice = $dppPrice + $dppTotalPrice;
+                        //$totalPrice = $totalPrice + $total;
+                        //$total_ppn = $total_ppn + $totalPPN;
+                        //$total_pph = $total_pph + $totalPPh;
+    
+                    }
                 } else {
-                    //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" checked /></td>';
-                    $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"  value="' . $row->invoice_detail_id . '" checked /></td>';
-
-                    //$dppPrice = $dppPrice + $dppTotalPrice;
-                    //$totalPrice = $totalPrice + $total;
-                    //$total_ppn = $total_ppn + $totalPPN;
-                    //$total_pph = $total_pph + $totalPPh;
-
+                    //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" /></td>';
+                    $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"  value="' . $row->invoice_detail_id . '" /></td>';
                 }
-            } else {
-                //$returnValue .= '<td><input type="checkbox" name="checkedSlips[]" id="inv" value="'. $row->invoice_detail_id .'" onclick="checkSlipInvoice('. $row->general_vendor_id .', \'NONE\', \'NONE\', '. $invoiceMethod .');" /></td>';
-                $returnValue .= '<td><input type="checkbox" name="checkedSlips[' . $count . ']" id="inv"  value="' . $row->invoice_detail_id . '" /></td>';
             }
             $returnValue .= '</tr>';
             $count = $count + 1;
@@ -11275,14 +11345,15 @@ function setPengajuanGeneralDetail()
         while ($row = $result->fetch_object()) {
 
             $returnValue .= '<tr>';
-            $sqlDP = "SELECT SUM(idp.amount_payment) AS down_payment,
-                    SUM(CASE WHEN id.`ppn` != 0 THEN idp.amount_payment * (ppn.`tax_value`/100) ELSE 0 END) AS ppn, 
-                    SUM(CASE WHEN id.pph != 0 THEN idp.amount_payment * (pph.`tax_value`/100) ELSE 0 END) AS pph 
+            $sqlDP = "SELECT SUM(idp.amount_payment) AS down_payment, 
+                        SUM(idp.ppn_value) AS ppn, SUM(idp.pph_value) AS pph
+                        /* SUM(CASE WHEN id.`ppn` != 0 THEN idp.amount_payment * (ppn.`tax_value`/100) ELSE 0 END) AS ppn, */
+                        /* SUM(CASE WHEN id.pph != 0 THEN idp.amount_payment * (pph.`tax_value`/100) ELSE 0 END) AS pph, */
                     FROM invoice_dp idp 
                     LEFT JOIN invoice_detail id ON id.`pgd_id` = idp.`invoice_detail_dp`
                     LEFT JOIN tax ppn ON ppn.`tax_id` = id.`ppnID`
                     LEFT JOIN tax pph ON pph.`tax_id` = id.`pphID`
-                    WHERE idp.status = 0 AND idp.pgd_id = {$row->pgd_id}";
+                    WHERE idp.status = 0 AND idp.pengajuan_detail_id = {$row->pgd_id}";
             $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
             if ($resultDP !== false && $resultDP->num_rows == 1) {
                 $rowDP = $resultDP->fetch_object();
@@ -11315,8 +11386,8 @@ function setPengajuanGeneralDetail()
             // $pph = $row->pph;
             // $amount = $row->amount * $termin / 100;
             // $tamount1 = $amount + $ppn  - $pph;
-            // $tamount = $tamount1 - $downPayment;
-            $totalPrice += $row->tamount_converted;
+            $tamount = $row->tamount_converted - $downPayment;
+            $totalPrice += $tamount;
             // echo " TEST " . $amount;
 
             if (isset($row->po_shipment) && $row->po_shipment != '') {
@@ -11346,7 +11417,7 @@ function setPengajuanGeneralDetail()
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->ppn, 2, ".", ",") . '</td>';
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->pph, 2, ".", ",") . '</td>';
             $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($downPayment, 2, ".", ",") . '</td>';
-            $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($row->tamount_converted, 2, ".", ",") . '</td>';
+            $returnValue .= '<td style="text-align: right; width: 8%;">' . number_format($tamount, 2, ".", ",") . '</td>';
             $returnValue .= '</tr>';
         }
 

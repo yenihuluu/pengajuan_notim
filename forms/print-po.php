@@ -19,6 +19,7 @@ $swift_code = '';
 $totalpph = '';
 $totalppn = '';
 $totalall = '';
+$totalDownPayment = '';
 $beneficiary = '';
 $sql = "SELECT
 ph.no_po, gv.general_vendor_name, s.stockpile_name, DATE_FORMAT(ph.tanggal, '%d %b %Y') AS tanggal,ph.no_penawaran,
@@ -232,7 +233,7 @@ if($result !== false && $result->num_rows > 0) {
 			(case when pd.pphstatus = 1 then pd.pph else 0 end) as pph,
 			(case when pd.ppnstatus = 1 then pd.ppn else 0 end) as ppn,
     		(pd.amount+(case when pd.ppnstatus = 1 then pd.ppn else 0 end)-(case when pd.pphstatus = 1 then pd.pph else 0 end)) as grandtotal,
-            u.uom_type,s.`stockpile_name`, sh.`shipment_no`
+            u.uom_type,s.`stockpile_name`, sh.`shipment_no`, pd.`idpo_detail`
 			from po_detail pd
 			left join master_item i on i.idmaster_item = pd.item_id
             left join uom u on u.idUOM = i.uom_id
@@ -255,6 +256,7 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
                 <th>Amount</th>
 				<th>VAT</th>
 				<th>WHT</th>
+                <th>Down Payment</th>
 				<th>Total Amount</th>
 
             </tr>
@@ -263,28 +265,67 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
          <tr>
         <?php
 		if($result !== false && $result->num_rows > 0) {
+
+        $downPayment = 0;
 		 while($row = $result->fetch_object()) {
 
-		$amount = $row->amount;
-		$totalPrice = $totalPrice + $amount;
-		$tpph = $row->pph;
-		$tppn = $row->ppn;
-		$tgtotal = $row->grandtotal;
-		$totalpph = $totalpph + $tpph;
-		$totalppn = $totalppn + $tppn;
-		$totalall = $totalall + $tgtotal;
+            $sqlDP = "SELECT SUM((idp.amount_payment + idp.ppn_value) - idp.pph_value) AS       down_payment,
+                idp.ppn_value AS ppn, 
+                idp.pph_value AS pph 
+                FROM invoice_dp idp 
+                WHERE idp.status = 0 AND idp.po_detail_id_dp = {$row->idpo_detail}";
+                $resultDP = $myDatabase->query($sqlDP, MYSQLI_STORE_RESULT);
+                if ($resultDP !== false && $resultDP->num_rows > 0) {
+
+                    $rowDP = $resultDP->fetch_object();
+
+                    if ($rowDP->ppn == 0) {
+                        $dp_ppn = 0;
+                    } else {
+                        //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                        $dp_ppn = $rowDP->ppn;
+                    }
+
+                    if ($rowDP->pph == 0) {
+                        $dp_pph = 0;
+                    } else {
+                        //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                        $dp_pph = $rowDP->pph;
+                    }
+
+
+                    if ($rowDP->down_payment != 0) {
+                        //$dp_ppn = $rowDP->down_payment * ($row->gv_ppn/100);
+                        //$dp_pph = $rowDP->down_payment * ($row->gv_pph/100);
+                        $downPayment = $rowDP->down_payment;
+                        // echo " AKA " . $downPayment;
+                    } else {
+                        $downPayment = 0;
+                    }
+                }
+
+                $amount = $row->amount;
+                $totalPrice = ((int)$totalPrice + (int)$amount);
+                $tpph = $row->pph;
+                $tppn = $row->ppn;
+                $tgtotal = $row->grandtotal - $downPayment;
+                $totalpph = ((int)$totalpph + (int)$tpph);
+                $totalppn = ((int)$totalppn + (int)$tppn);
+                $totalDownPayment = ((int)$totalDownPayment + (int)$downPayment);
+                $totalall = ((int)$totalall + (int)$tgtotal);
 
 
 	 ?>
 				<td><?php echo $row->shipment_no; ?></td>
                 <td><?php echo $row->stockpile_name; ?></td>
-                <td><?php echo $row->qty; ?></td>
+                <td><?php echo number_format((int)$row->qty, 2, ".", ","); ?> KG</td>
                 <td><?php echo number_format($row->harga, 2, ".", ",");?></td>
                 <td><?php echo $row->item_name;?></td>
                 <td style="text-align: right;"><?php echo number_format($row->amount, 2, ".", ",");?></td>
                 <td style="text-align: right;"><?php echo number_format($row->ppn, 2, ".", ",");?></td>
 			 	<td style="text-align: right;"><?php echo number_format($row->pph, 2, ".", ",");?></td>
-			 	<td style="text-align: right;"><?php echo number_format($row->grandtotal, 2, ".", ",");?></td>
+                 <td style="text-align: right;"><?php echo number_format($downPayment, 2, ".", ",");?></td>
+			 	<td style="text-align: right;"><?php echo number_format($tgtotal, 2, ".", ",");?></td>
 
           </tr>
           <?php
@@ -299,6 +340,7 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
         <td colspan="1" style="text-align: right;"><?php echo number_format($totalPrice, 2, ".", ",");?></td>
        <td colspan="1" style="text-align: right;"><?php echo number_format($totalppn, 2, ".", ",");?></td>
 		<td colspan="1" style="text-align: right;"><?php echo number_format($totalpph, 2, ".", ",");?></td>
+        <td colspan="1" style="text-align: right;"><?php echo number_format($totalDownPayment, 2, ".", ",");?></td>
 		<td colspan="1" style="text-align: right;"><?php echo number_format($totalall, 2, ".", ",");?></td>
         </tr>
 
