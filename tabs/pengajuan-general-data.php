@@ -1763,7 +1763,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                         $totalDownPayment = $totalDownPayment + $downPayment;
                         $totalall = $totalall + $tamount;
 
-                        $pAmount = $tamount * $termin / 100;
+                        $pAmount = $tamount;
                         $totalPAmount += $pAmount;
                         $totalPaid += $paid;
                         $totalAvailableAmount += $AvailAmount;
@@ -1776,9 +1776,9 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     <td><?php echo number_format($row->harga, 2, ".", ","); ?></td>
                     <td><?php echo $row->termin; ?>%</td>
                     <td><?php echo $row->item_name; ?></td>
-                    <td style="text-align: right;"><?php echo number_format($row->amount * $termin / 100, 2, ".", ","); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($tppn * $termin / 100, 2, ".", ","); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($tpph * $termin / 100, 2, ".", ","); ?></td>
+                    <td style="text-align: right;"><?php echo number_format($row->amount, 2, ".", ","); ?></td>
+                    <td style="text-align: right;"><?php echo number_format($tppn, 2, ".", ","); ?></td>
+                    <td style="text-align: right;"><?php echo number_format($tpph, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($downPayment, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($tamount, 2, ".", ","); ?></td>
 
@@ -1793,11 +1793,11 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 <tr>
                     <td colspan="6" style="text-align: right;"> Grand Total</td>
                     <td colspan="1"
-                        style="text-align: right;"><?php echo number_format($totalPrice * $termin / 100, 2, ".", ","); ?></td>
+                        style="text-align: right;"><?php echo number_format($totalPrice, 2, ".", ","); ?></td>
                     <td colspan="1"
-                        style="text-align: right;"><?php echo number_format($totalppn * $termin / 100, 2, ".", ","); ?></td>
+                        style="text-align: right;"><?php echo number_format($totalppn, 2, ".", ","); ?></td>
                     <td colspan="1"
-                        style="text-align: right;"><?php echo number_format($totalpph * $termin / 100, 2, ".", ","); ?></td>
+                        style="text-align: right;"><?php echo number_format($totalpph, 2, ".", ","); ?></td>
                         <td colspan="1"
                         style="text-align: right;"><?php echo number_format($totalDownPayment, 2, ".", ","); ?></td>
                     <td colspan="1" style="text-align: right;"><?php echo number_format($totalall, 2, ".", ","); ?></td>

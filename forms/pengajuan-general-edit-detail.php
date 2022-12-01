@@ -37,7 +37,7 @@ $sql = "SELECT id.*, gv.general_vendor_name, pd.idpo_detail  FROM pengajuan_gene
         LEFT JOIN general_vendor gv ON gv.general_vendor_id = id.general_vendor_id 
         LEFT JOIN invoice_dp idp ON idp.pengajuan_detail_id = id.pgd_id
         LEFT JOIN po_detail pd ON pd.idpo_detail = idp.po_detail_id_dp
-        WHERE pgd_id = {$pgdId} ORDER BY pgd_id ASC";
+        WHERE pgd_id = {$pgdId} ORDER BY pgd_id ASC LIMIT 1";
 // echo $sql;
 $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
 if ($result !== false && $result->num_rows == 1) {
