@@ -830,7 +830,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue">
             <label>Original Invoice No.</label>
             <input type="text" class="span12" tabindex="" id="generatedInvoiceNo2" name="generatedInvoiceNo2"
-                   value="<?php echo $generatedInvoiceNo2; ?>" readonly>
+                   value="<?php echo $generatedInvoiceNo2; ?>">
 
         </div>
     </div>
@@ -851,7 +851,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
             ?>
             <label>Tax Invoice No.</label>
             <input type="text" class="span12" tabindex="" id="invoiceTax" name="invoiceTax"
-                   value="<?php echo $invoiceTax; ?>" readonly>
+                   value="<?php echo $invoiceTax; ?>">
         </div>
         <div class="span1 lightblue">
 

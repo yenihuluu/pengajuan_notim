@@ -282,6 +282,11 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     
                         $sqlLog = "UPDATE logbook_new set inv_general_id = NULL, status1 = 0 where pgeneral_id = {$pgId}";
                         $resultLog = $myDatabase->query($sqlLog, MYSQLI_STORE_RESULT);
+
+                        $sqlUpdateStatusPO = "UPDATE pengajuan_general pg 
+                        LEFT JOIN po_hdr ph ON ph.idpo_hdr = pg.po_id
+                        SET ph.status = 5 where pg.pengajuan_general_id = {$pgId}";
+                        $resUpdateSTPO = $myDatabase->query($sqlUpdateStatusPO, MYSQLI_STORE_RESULT);
                         
                     } else {
                         $return_value = '|FAIL|Returned invoice failed.|';
@@ -529,15 +534,15 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             }
 
                             //Update Status PO
-                            if ($termin == 100) {
+                            // if ($termin == 100) {
                                 $sqlUpdateStatusPO = "UPDATE po_hdr SET status = 5 where idpo_hdr = {$idPOHDR}";
                                 $resUpdateSTPO = $myDatabase->query($sqlUpdateStatusPO, MYSQLI_STORE_RESULT);
-                            }
+                            // }
                             // </editor-fold>
 
                             // <editor-fold defaultstate="collapsed" desc="Query for INSERT Pengajuan General Detail">
                             $sqlPODetail = "SELECT 
-                            (CASE WHEN idp.invoice_dp IS NOT NULL THEN (idp.amount_payment + idp.ppn_value) - idp.pph_value ELSE 0 END) AS full_down_payment,
+                            (CASE WHEN idp.invoice_dp IS NOT NULL THEN SUM((idp.amount_payment + idp.ppn_value) - idp.pph_value) ELSE 0 END) AS full_down_payment,
                             a.account_id AS accountId,a.account_type AS accountType,pd.*, i.item_name, 
                                 (CASE WHEN pd.pphstatus = 1 THEN pd.pph ELSE 0 END) AS pph,
                                 (CASE WHEN pd.ppnstatus = 1 THEN pd.ppn ELSE 0 END) AS ppn,
@@ -551,7 +556,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 LEFT JOIN stockpile s ON s.`stockpile_id` = pd.`stockpile_id`
                                 LEFT JOIN shipment sh ON sh.`shipment_id` = pd.`shipment_id`
                                 LEFT JOIN invoice_dp idp ON idp.`po_detail_id_dp` = pd.`idpo_detail`
-                            WHERE no_po = '{$noPO}' ORDER BY idpo_detail ASC";
+                            WHERE no_po = '{$noPO}' GROUP BY pd.idpo_detail ORDER BY idpo_detail ASC";
 
                             $resultPODetail = $myDatabase->query($sqlPODetail, MYSQLI_STORE_RESULT);
 
@@ -567,20 +572,18 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 $stockpileId2 = isset($row->stockpile_id) ? $row->stockpile_id : 0;
                                 $qty = $row->qty;
                                 $price = $row->harga;
-                                $termin = $terminHeader;
-                                $tempTermin = ($termin/100);
-                                $amount2 = $row->amount *  $tempTermin ;
+                                $amount2 = $row->amount;
                                 $amountConverted = $amount2;
                                 if ($currencyId == 1) {
                                     $exchangeRate = 1;
                                 } else {
                                     $exchangeRate = $rate;
                                 }
-                                $ppnID = $row->ppn_id *  $tempTermin ;
-                                $ppn2 = $row->ppn *  $tempTermin;
+                                $ppnID = $row->ppn_id;
+                                $ppn2 = $row->ppn;
                                 $ppnConverted = $ppn2 * $exchangeRate;
                                 $pphID = $row->pph_id;
-                                $pph2 = $row->pph *  $tempTermin;
+                                $pph2 = $row->pph;
                                 $pphConverted = $pph2 * $exchangeRate;
                                 $tamount = ($amount2 + $ppn2 - $pph2);
                                 // $tamount = $tamount * $termin / 100;
@@ -963,6 +966,11 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
 
                     $updateLog = "UPDATE `logbook_new` SET inv_general_id = {$invId}, status1 = 1 WHERE pgeneral_id = {$pgId}";
                     $resultUL = $myDatabase->query($updateLog, MYSQLI_STORE_RESULT);
+
+                    $sqlUpdateStatusPO = "UPDATE pengajuan_general pg 
+                    LEFT JOIN po_hdr ph ON ph.idpo_hdr = pg.po_id
+                    SET ph.status = 1 where pg.pengajuan_general_id = {$pgId}";
+                    $resUpdateSTPO = $myDatabase->query($sqlUpdateStatusPO, MYSQLI_STORE_RESULT);
 
 
                    $sqlGetPengajuanDetail = "SELECT idp.invoice_detail_dp AS inv_dp_id, pgd.* FROM pengajuan_general_detail pgd
@@ -2562,7 +2570,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                             if ($slipNos2 == '') {
                                 $slipNos2 .= '(' . $PODetailId . ',' . $checks[$i] . ',' . $checks2[$i] . ',' . $checks3[$i] . ',' . $checks4[$i] . ')';
                             } else {
-                                $slipNos2 .= ',' . $PODetailId . ',' . '(' . $checks[$i] . ',' . $checks2[$i] . ',' . $checks3[$i] . ',' . $checks4[$i] . ')';
+                                $slipNos2 .= ',' . '('  . $PODetailId . ',' . $checks[$i] . ',' . $checks2[$i] . ',' . $checks3[$i] . ',' . $checks4[$i] . ')';
                             }
                         }
                     }

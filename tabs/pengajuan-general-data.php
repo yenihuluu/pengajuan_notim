@@ -79,7 +79,7 @@ if (isset($_POST['idPOHDR']) && $_POST['idPOHDR'] != '') {
 			(case when pd.pphstatus = 1 then pd.pph else 0 end) as pph,
 			(case when pd.ppnstatus = 1 then pd.ppn else 0 end) as ppn,
     		(pd.amount+(case when pd.ppnstatus = 1 then pd.ppn else 0 end)-(case when pd.pphstatus = 1 then pd.pph else 0 end)) as grandtotal,
-            u.uom_type,s.`stockpile_name`, sh.`shipment_no`,sum(id.tamount_converted) as paid, sum(pgd.termin) as total_termin, pd.idpo_detail
+            u.uom_type,s.`stockpile_name`, sh.`shipment_no`,sum(id.tamount_converted) as paid, sum(pgd.termin) as total_termin, pd.idpo_detail, pd.termin
 			from po_detail pd
 			left join master_item i on i.idmaster_item = pd.item_id
             left join uom u on u.idUOM = i.uom_id
@@ -1697,6 +1697,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     <th>Stockpile</th>
                     <th>Qty</th>
                     <th>Price</th>
+                    <th>Termin</th>
                     <th>Description</th>
                     <th>Amount</th>
                     <th>VAT</th>
@@ -1773,6 +1774,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                     <td><?php echo $row->stockpile_name; ?></td>
                     <td><?php echo $row->qty; ?></td>
                     <td><?php echo number_format($row->harga, 2, ".", ","); ?></td>
+                    <td><?php echo $row->termin; ?>%</td>
                     <td><?php echo $row->item_name; ?></td>
                     <td style="text-align: right;"><?php echo number_format($row->amount * $termin / 100, 2, ".", ","); ?></td>
                     <td style="text-align: right;"><?php echo number_format($tppn * $termin / 100, 2, ".", ","); ?></td>
@@ -1789,7 +1791,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 <tfoot>
 
                 <tr>
-                    <td colspan="5" style="text-align: right;"> Grand Total</td>
+                    <td colspan="6" style="text-align: right;"> Grand Total</td>
                     <td colspan="1"
                         style="text-align: right;"><?php echo number_format($totalPrice * $termin / 100, 2, ".", ","); ?></td>
                     <td colspan="1"

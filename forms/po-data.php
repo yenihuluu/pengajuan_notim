@@ -27,7 +27,7 @@ $shipmentId = '';
 $signId = '';
 $groupitemId = '';
 $requestDate = '';
-$podID = '';
+$podID = 0;
 $method_ = "INSERT";
 $pphId = '';
 
@@ -71,7 +71,7 @@ if (isset ($_POST['POMethod']) && $_POST['POMethod'] != '') {
     $POMethod = $_POST['POMethod'];
 }
 
-if($podID != ''){
+if($podID != '' || $podID != 0){
     $sql = "SELECT * FROM PO_detail WHERE idpo_detail = {$podID}";
     $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
     if ($result !== false && $result->num_rows > 0) {
@@ -167,13 +167,13 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         });
 
 
-        <?php if($podID != ''){ ?>
+        <?php if($podID != '' || $podID != 0){ ?>
                 getGeneralVendorTax(<?php echo $generalVendorId ?>, <?php echo $amount ?>);
                 setPPh(1,<?php echo $generalVendorId; ?>, <?php echo $pphId ?>);
         <?php } ?>
 
         <?php if($generalVendorId != '' && $POMethod == 1) {?>
-            setInvoiceDP(<?php echo  $generalVendorId ?>, '', '<?php echo  $method_ ?>');
+            setInvoiceDP(<?php echo  $podID ?>,<?php echo  $generalVendorId ?>, '', '<?php echo  $method_ ?>');
         <?php } ?>
         
         $('#ppnPO1').number(true, 10);
@@ -353,12 +353,13 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         document.getElementById('amount').value = result;
     }
 
-    function setInvoiceDP(generalVendorId, ppn1, method) {
+    function setInvoiceDP(podID, generalVendorId, ppn1, method) {
         $.ajax({
             url: 'get_data.php',
             method: 'POST',
             data: {
                 action: 'setInvoiceDP',
+                podID: podID,
                 generalVendorId: generalVendorId,
                 ppn1: ppn1,
                 method: method

@@ -233,7 +233,7 @@ if($result !== false && $result->num_rows > 0) {
 			(case when pd.pphstatus = 1 then pd.pph else 0 end) as pph,
 			(case when pd.ppnstatus = 1 then pd.ppn else 0 end) as ppn,
     		(pd.amount+(case when pd.ppnstatus = 1 then pd.ppn else 0 end)-(case when pd.pphstatus = 1 then pd.pph else 0 end)) as grandtotal,
-            u.uom_type,s.`stockpile_name`, sh.`shipment_no`, pd.`idpo_detail`
+            u.uom_type,s.`stockpile_name`, sh.`shipment_no`, pd.`idpo_detail`, pd.`termin`
 			from po_detail pd
 			left join master_item i on i.idmaster_item = pd.item_id
             left join uom u on u.idUOM = i.uom_id
@@ -252,6 +252,7 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
 				<th>Stockpile</th>
 				<th>Qty</th>
                 <th>Price</th>
+                <th>Termin</th>
                 <th>Description</th>
                 <th>Amount</th>
 				<th>VAT</th>
@@ -320,6 +321,7 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
                 <td><?php echo $row->stockpile_name; ?></td>
                 <td><?php echo number_format((int)$row->qty, 2, ".", ","); ?> KG</td>
                 <td><?php echo number_format($row->harga, 2, ".", ",");?></td>
+                <td><?php echo $row->termin;?>%</td>
                 <td><?php echo $row->item_name;?></td>
                 <td style="text-align: right;"><?php echo number_format($row->amount, 2, ".", ",");?></td>
                 <td style="text-align: right;"><?php echo number_format($row->ppn, 2, ".", ",");?></td>
@@ -336,7 +338,7 @@ $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
         <tfoot>
 
 			<tr>
-        <td colspan="5" style="text-align: right;"> Grand Total</td>
+        <td colspan="6" style="text-align: right;"> Grand Total</td>
         <td colspan="1" style="text-align: right;"><?php echo number_format($totalPrice, 2, ".", ",");?></td>
        <td colspan="1" style="text-align: right;"><?php echo number_format($totalppn, 2, ".", ",");?></td>
 		<td colspan="1" style="text-align: right;"><?php echo number_format($totalpph, 2, ".", ",");?></td>

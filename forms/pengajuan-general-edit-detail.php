@@ -33,8 +33,10 @@ $joinProperty = '';
 // <editor-fold defaultstate="collapsed" desc="Functions">
 
 
-$sql = "SELECT id.*, gv.general_vendor_name  FROM pengajuan_general_detail id 
-        LEFT JOIN general_vendor gv on gv.general_vendor_id = id.general_vendor_id 
+$sql = "SELECT id.*, gv.general_vendor_name, pd.idpo_detail  FROM pengajuan_general_detail id 
+        LEFT JOIN general_vendor gv ON gv.general_vendor_id = id.general_vendor_id 
+        LEFT JOIN invoice_dp idp ON idp.pengajuan_detail_id = id.pgd_id
+        LEFT JOIN po_detail pd ON pd.idpo_detail = idp.po_detail_id_dp
         WHERE pgd_id = {$pgdId} ORDER BY pgd_id ASC";
 // echo $sql;
 $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
@@ -53,6 +55,7 @@ if ($result !== false && $result->num_rows == 1) {
     $amount = $row->amount;
     $shipmentId = $row->shipment_id;
     $poId = $row->poId;
+    $podID = $row->idpo_detail;
     $invoiceType = $row->type;
     $tamount = $row->tamount;
     $tamountConverted = $row->tamount_pengajuan;
@@ -225,7 +228,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         // <?php } ?>
 
         <?php if($invoiceMethod == 1){ ?>
-            setInvoiceDP(<?php echo  $generalVendorId ?>, '', '', 'NONE');
+            setInvoiceDP(<?php echo  $podID ?>, <?php echo  $generalVendorId ?>, '', '', 'NONE');
         <?php } ?>
 
     });
@@ -868,13 +871,14 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
     }
     
 
-    function setInvoiceDP(generalVendorId, ppn1) {
+    function setInvoiceDP(podID, generalVendorId, ppn1) {
 
         $.ajax({
             url: 'get_data.php',
             method: 'POST',
             data: {
                 action: 'setInvoiceDP',
+                podID: podID,
                 generalVendorId: generalVendorId,
                 ppn1: ppn1,
 
@@ -954,8 +958,13 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         </div>
         <div class="span4 lightblue" id="divShipment" style="display: none;">
             <label>Shipment Code</label>
-            <?php createCombo("SELECT a.shipment_id, CONCAT(a.shipment_no, ' - ', SUBSTR(a.`shipment_code`,-1)) AS shipment_no, b.`stockpile_id`  
+            <!-- <?php createCombo("SELECT a.shipment_id, CONCAT(a.shipment_no, ' - ', SUBSTR(a.`shipment_code`,-1)) AS shipment_no, b.`stockpile_id`  
                     FROM shipment a LEFT JOIN sales b ON a.`sales_id` = b.`sales_id` WHERE b.`sales_status` != 4 AND b.stockpile_id = {$spRemark} ORDER BY shipment_id DESC", $shipmentId, "", "shipmentId1", "shipment_id", "shipment_no", "", "", "select2combobox100", 4); 
+            ?> -->
+            <?php
+            createCombo("SELECT shipment_id, shipment_no
+                            FROM shipment", $shipmentId, "", "shipmentId1", "shipment_id", "shipment_no",
+                "", "", "select2combobox100", 4, "", true);
             ?>
         </div>
     </div>

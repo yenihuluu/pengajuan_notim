@@ -186,7 +186,7 @@ switch ($_POST['action']) {
         refreshInvoice($_POST['invoiceId'], $_POST['paymentMethod'], $_POST['ppn1'], $_POST['pph1']);
         break;
     case "setInvoiceDP":
-        setInvoiceDP($_POST['generalVendorId'], $_POST['method'], $_POST['checkedSlips'], $_POST['checkedSlips2'], $_POST['checkedSlips3'], $_POST['checkedSlips4'], $_POST['ppn1'], $_POST['pph1']);
+        setInvoiceDP($_POST['podID'], $_POST['generalVendorId'], $_POST['method'], $_POST['checkedSlips'], $_POST['checkedSlips2'], $_POST['checkedSlips3'], $_POST['checkedSlips4'], $_POST['ppn1'], $_POST['pph1']);
         break;
     case "setInvoiceDetail":
         setInvoiceDetail();
@@ -7294,7 +7294,7 @@ WHERE idp.status = 0 AND idp.invoice_detail_id = {$row->invoice_detail_id}";
     echo $returnValue;
 }
 
-function setInvoiceDP($generalVendorId,$method, $ppn1)
+function setInvoiceDP($podID, $generalVendorId,$method, $ppn1)
 {
     global $myDatabase;
     $returnValue = '';
@@ -7304,16 +7304,17 @@ function setInvoiceDP($generalVendorId,$method, $ppn1)
         $whereProperty = 'AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
         ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) > 0.001';
     } else {
-        $whereProperty = 'AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
-        ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) < 0.001';
+        $whereProperty = "AND (CASE WHEN id.`amount` < 0 THEN ((id.`amount` *-1) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0)) 
+        ELSE ((id.`amount`) - (SELECT COALESCE(SUM(amount_payment),0) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND `status` = 0))END) < 0.001 AND idp.`po_detail_id_dp` = {$podID}";
     }
 
     $sql = "SELECT i.*, id.*,gv.`pph` AS dp_pph, gv.`ppn` AS dp_ppn,
             (SELECT SUM(amount_payment) FROM invoice_dp WHERE invoice_detail_dp = id.invoice_detail_id AND status = 0) AS total_dp
             FROM invoice i 
             LEFT JOIN invoice_detail id ON i.`invoice_id` = id.`invoice_id`
+            LEFT JOIN invoice_dp idp ON idp.`invoice_detail_dp` = id.`invoice_detail_id`
             LEFT JOIN general_vendor gv ON gv.`general_vendor_id` = id.`general_vendor_id`
-            WHERE id.general_vendor_id = {$generalVendorId} AND id.invoice_method_detail = 2 AND id.invoice_detail_status = 0 AND i.company_id = {$_SESSION['companyId']} AND i.`payment_status` != 2
+            WHERE id.general_vendor_id = {$generalVendorId} AND id.invoice_method_detail = 2 AND id.invoice_detail_status = 0 AND i.company_id = {$_SESSION['companyId']} AND i.`payment_status` != 2 AND i.`invoice_status` != 2
             $whereProperty
             ORDER BY i.invoice_id DESC, id.invoice_detail_id DESC";
 
