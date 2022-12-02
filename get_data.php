@@ -705,12 +705,12 @@ function setSlipVehicle($stockpileId, $checkedSlips, $periodeFrom, $periodeTo, $
         tt.vendor_id,
         tt.transaction_id,
         CASE WHEN tt.quantity < 15000 THEN 'Small Car' ELSE 'Big Car' END AS type_cars, 
-        CASE WHEN tt.quantity < 15000 AND oks.car_type = 1 
+        CASE WHEN tt.quantity < 15000 AND oks.car_type = 2 
                 AND oks.active_date <= '{$todayDate}' 
                 AND oks.type = 3 
                 THEN oks.price ELSE 0 END AS smallPrice, 
         CASE WHEN tt.quantity > 15000 
-                AND oks.car_type = 2 
+                AND oks.car_type = 1 
                 AND oks.active_date <= '{$todayDate}' 
                 AND oks.type = 3 
                 THEN oks.price ELSE 0 END AS bigPrice
@@ -741,7 +741,7 @@ function setSlipVehicle($stockpileId, $checkedSlips, $periodeFrom, $periodeTo, $
       WHERE vehicleData.smallPrice > 0 OR vehicleData.bigPrice > 0";
     $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
 
-// echo "Vehicle <br> " .$sql;
+//echo "Vehicle <br> " .$sql;
     if ($result->num_rows > 0) {
         $returnValue = '<div class="span12 lightblue">';
         $returnValue .= '<table class="table table-bordered table-striped" style="font-size: 9pt;">';
@@ -777,7 +777,12 @@ function setSlipVehicle($stockpileId, $checkedSlips, $periodeFrom, $periodeTo, $
             $vendorName = '';
             $vendorName = $row->vendor_name;
             $price = $row->qty > 15000 ? $row->bigPrice : $row->smallPrice;
-            $temp_pph = $pph_value/100 * $price;
+			if($pph_value > 0){
+				$temp_pph = $pph_value/100 * $price;
+			}else{
+				$temp_pph = 0;
+			}
+            
             $temp_total_amount = $price -  $temp_pph;
 
             // echo " EE " .$checkedSlips ;
@@ -793,7 +798,12 @@ function setSlipVehicle($stockpileId, $checkedSlips, $periodeFrom, $periodeTo, $
                     } else {
                         $returnValue .= '<td><input type="checkbox" name="checkedSlips[]" value="' . $row->transaction_id . '" onclick="checkSlip(' . $stockpileId . ',' . ' \'' . $periodeFrom . '\', \'' . $periodeTo . '\', ' .$row->vendor_id .' , ' .$gvId. ');" checked /></td>';
                         $temp_total_price += $price;
-                        $PPh = ($pph_value/100) * $price;
+						if($pph_value > 0){
+							$PPh = ($pph_value/100) * $price;
+						}else{
+							$PPh = 0;
+						}
+                       
                         $grand_total += $price-$PPh;
                         $total_pph += $PPh;
                         if (!in_array($price, $priceArr)) array_push($priceArr, $price);
