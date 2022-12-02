@@ -56,7 +56,9 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     $transaksiMutasi = $myDatabase->real_escape_string($_POST['transaksiMutasi']);
     $transaksiPO = $myDatabase->real_escape_string($_POST['transaksiPO']);
     $gvEmail = $myDatabase->real_escape_string($_POST['gvEmail']);
+    $gvBankId = $myDatabase->real_escape_string($_POST['gvBankId']);
     $picEmail = $myDatabase->real_escape_string($_POST['picEmail']);
+    $picEmail2 = $myDatabase->real_escape_string($_POST['picEmail2']);
     $transaksiOKSAKT = $myDatabase->real_escape_string($_POST['transaksiOKSAKT']);
     $amount = $grandTotal;
     $amountConverted = $grandTotal;
@@ -939,26 +941,65 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                     }
 
                     $sqlGetPengajuan = "SELECT * FROM pengajuan_general WHERE pengajuan_general_id = {$pgId}";
-                    $pg = $myDatabase->query($sqlGetPengajuan, MYSQLI_STORE_RESULT);     
-                    //Insert TO Invoice
-                   while($rowPG = $pg->fetch_object()) {
-                       $poId = isset($rowPG->po_id) ? $rowPG->po_id : 'NULL';
-                       $ppnValue = isset($rowPG->total_ppn) ? $rowPG->total_ppn : 0;
-                       $sqlInsertPg = "INSERT INTO `invoice` (invoice_date,request_date, tax_date, invoice_method,po_id, "
-                                       ." stockpileId, invoice_no, invoice_no2, invoice_tax, remarks, file, company_id, entry_by, entry_date, invoice_status, input_date,  "
-                                       ." total_qty, total_price, total_dpp, total_amount, total_pph, total_ppn) VALUES ("
-                                       . "STR_TO_DATE('{$rowPG->invoice_date}', '%Y-%m-%d'),STR_TO_DATE('{$rowPG->request_date}', '%Y-%m-%d'), STR_TO_DATE('{$rowPG->tax_date}', '%Y-%m-%d'), "
-                                       ." {$invoiceMethod},{$poId},{$rowPG->stockpileId}, '{$invoiceNo}', '{$rowPG->invoice_no2}', '{$rowPG->invoice_tax}', '{$rowPG->remarks}',"
-                                       . "'{$rowPG->file}', {$_SESSION['companyId']}, {$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'), 1, STR_TO_DATE('$inputDate', '%d/%m/%Y %H:%i:%s'), "
-                                       ." {$rowPG->total_qty}, {$rowPG->total_price}, {$rowPG->total_dpp}, {$rowPG->total_amount}, {$rowPG->total_pph}, {$ppnValue})";
-                       $resPG = $myDatabase->query($sqlInsertPg, MYSQLI_STORE_RESULT);
-                       $invId = $myDatabase->insert_id;
-                      // echo $sqlInsertPg;
+                    $pg = $myDatabase->query($sqlGetPengajuan, MYSQLI_STORE_RESULT); 
+                    
+                    $sqlCheckInvoiceNo2 = "SELECT invoice_no2 FROM pengajuan_general WHERE invoice_no2 != '-' AND status_pengajuan != 5 AND invoice_no2 ='{$invoiceNo2}'";
+                 //   echo $sqlCheckInvoiceNo2;
+                    $checkInvoiceNo2 = $myDatabase->query($sqlCheckInvoiceNo2, MYSQLI_STORE_RESULT);
 
-                       $sql1 = "UPDATE pengajuan_general SET invoice_method = {$invoiceMethod},  transaction_type = {$mutasi} WHERE pengajuan_general_id = {$pgId} ";
-                       $result1 = $myDatabase->query($sql1, MYSQLI_STORE_RESULT);
-                       
-                   }
+                    if ($checkInvoiceNo2->num_rows > 1) {
+                        $invoiceNo2Check = false;
+                    } else {
+                        $invoiceNo2Check = true;
+                    }
+
+                    if ($invoiceNo2Check) { 
+                    //Insert TO Invoice
+                       while($rowPG = $pg->fetch_object()) {
+                           $poId = isset($rowPG->po_id) ? $rowPG->po_id : 'NULL';
+                           $ppnValue = isset($rowPG->total_ppn) ? $rowPG->total_ppn : 0;
+                           $sqlInsertPg = "INSERT INTO `invoice` (invoice_date,request_date, tax_date, invoice_method,po_id, "
+                                           ." stockpileId, invoice_no, invoice_no2, invoice_tax, remarks, file, company_id, entry_by, entry_date, invoice_status, input_date,  "
+                                           ." total_qty, total_price, total_dpp, total_amount, total_pph, total_ppn) VALUES ("
+                                           . "STR_TO_DATE('{$invoiceDate}', '%d/%m/%Y'),STR_TO_DATE('{$requestDate}', '%d/%m/%Y'), STR_TO_DATE('{$taxDate}', '%d/%m/%Y'), "
+                                           ." {$invoiceMethod},{$poId},{$rowPG->stockpileId}, '{$invoiceNo}', '{$invoiceNo2}', '{$invoiceTax}', '{$remarks}',"
+                                           . "'{$rowPG->file}', {$_SESSION['companyId']}, {$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'), 1, STR_TO_DATE('$inputDate', '%d/%m/%Y %H:%i:%s'), "
+                                           ." {$rowPG->total_qty}, {$rowPG->total_price}, {$rowPG->total_dpp}, {$rowPG->total_amount}, {$rowPG->total_pph}, {$ppnValue})";
+                           $resPG = $myDatabase->query($sqlInsertPg, MYSQLI_STORE_RESULT);
+                           $invId = $myDatabase->insert_id;
+                          // echo $sqlInsertPg;
+    
+                            $sqlUpdatePengajuanGeneral = "UPDATE pengajuan_general 
+                                    SET invoice_method = {$invoiceMethod}, 
+                                        transaction_type = {$mutasi}, 
+                                        invoice_no2 = '{$invoiceNo2}', 
+                                        invoice_tax = '{$invoiceTax}', 
+                                        remarks = '{$remarks}', 
+                                        request_date = STR_TO_DATE('{$requestDate}', '%d/%m/%Y'), 
+                                        invoice_date = STR_TO_DATE('{$invoiceDate}', '%d/%m/%Y'), 
+                                        tax_date = STR_TO_DATE('{$taxDate}', '%d/%m/%Y'), 
+                                        input_date = STR_TO_DATE('$inputDate', '%d/%m/%Y %H:%i:%s') 
+                                    WHERE pengajuan_general_id = {$pgId} ";
+                            $resultPengajuanGeneral = $myDatabase->query($sqlUpdatePengajuanGeneral, MYSQLI_STORE_RESULT);
+
+                            $sqlUpdatePO = "UPDATE pengajuan_general pg
+                                                LEFT JOIN po_hdr ph ON ph.idpo_hdr = pg.po_id
+                                                SET ph.gv_email = '$gvEmail', ph.bank_id = $gvBankId
+                                            WHERE pg.pengajuan_general_id = {$pgId}";
+                            $resUpdatePO = $myDatabase->query($sqlUpdatePO, MYSQLI_STORE_RESULT);
+
+                            $sqlUpdatePengajuanDetail = "UPDATE pengajuan_general_detail pgd
+                                                            LEFT JOIN pengajuan_general pg ON pg.pengajuan_general_id = pgd.pg_id
+                                                            SET pgd.vendor_email = '$gvEmail', pgd.gv_bank_id = $gvBankId
+                                                        WHERE pg.pengajuan_general_id = {$pgId}";
+                            $resUpdatePengajuanDetail = $myDatabase->query($sqlUpdatePengajuanDetail, MYSQLI_STORE_RESULT);
+                            var_dump($sqlUpdatePODetail);
+                       }
+                    } else {
+                        echo '|FAIL| Original Invoice No Tidak Boleh Sama! atau tipe pembayaran harus di isi';
+                        die();
+                    }
+
 
                    $updatePG = "UPDATE `pengajuan_general` SET invoice_id = {$invId}, invoice_status = 1,  status_pengajuan = 1,
                                 approved_by = {$_SESSION['userId']}, approved_date = STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s') WHERE pengajuan_general_id = {$pgId}";
@@ -1323,6 +1364,10 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
             // echo " YS " . $sql;
             $result = $myDatabase->query($sql, MYSQLI_STORE_RESULT);
             if ($result !== false) {
+                $sqlUpdatePODetail = "UPDATE pengajuan_general_detail pgd 
+                    LEFT JOIN po_detail pd ON pd.idpo_detail = pgd.po_detail_id
+                    SET pd.shipment_id = $shipmentId where pgd.pgd_id = {$_POST['pgdId']}";
+                    $resUpdatePODetail = $myDatabase->query($sqlUpdatePODetail, MYSQLI_STORE_RESULT);
                 $return_value = '|OK|Pengajuan General Detail has successfully to Update data.|';
                 /*if($invoiceType == 4 && $invoiceMethod == 2){
                     $sql2 = "UPDATE `accrue_prediction_detail` SET status = 2 WHERE prediction_detail_id = {$_POST['prediksiDetailId']}";
@@ -2646,6 +2691,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                     . "pph_id = {$pphpoID}, "
                     . "pph = {$pphpo}, "
                     . "pphstatus = {$pphstatus}, "
+                    . "termin = {$termin}, "
                     . "po_method_detail = {$POMethod} "
                     . "WHERE idpo_detail = {$pod_id} ";
         $resultUpdate = $myDatabase->query($sqlUpdate, MYSQLI_STORE_RESULT);

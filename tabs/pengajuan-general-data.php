@@ -142,7 +142,7 @@ if (isset($_POST['pgId']) && $_POST['pgId'] != '') {
         $inputDate = $rowData->input_date;
         $requestDate = $rowData->request_date;
         $taxDate = $rowData->tax_date;
-        $generatedInvoiceNo = $rowData->invoice_no;
+        $generatedInvoiceNo = $rowData->pengajuan_no;
         $generatedInvoiceNo2 = $rowData->invoice_no2;
         $stockpileId = $rowData->stockpileId;
         $stockpileContractId3 = $rowData->po_id;
@@ -282,7 +282,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         // $('#priceOKS').number(true, 2);
         
         <?php
-        if($generatedInvoiceNo == "") {
+        if($generatedInvoiceNo == "" &&  $pgId == "") {
         ?>
         // if(document.getElementById('generalVendorId').value != "") {
         $.ajax({
@@ -691,7 +691,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                 typeOKS: document.getElementById('transaksiOKSAKT').value
             },
             success: function (data) {
-                console.log(data);
+                // console.log(data);
                 var returnVal = data.split('|');
                 if (parseInt(returnVal[3]) != 0)	//if no errors
                 {
@@ -822,7 +822,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <?php } ?>
 
         $('#paymentType').change(function () {
-            console.log(this.value)
+            // console.log(this.value)
             if (this.value == 1) {
                 $('#requestPaymentDate').show();
                 $("#requestPaymentDateValue").prop("disabled", false).val("");
@@ -1557,22 +1557,21 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue">
             <label>File.</label>
             <input type="file" class="span12" readonly id="file" name="file" style="width: 95%;">
+            <?php if (isset($file) && $file != '') { ?>
+                <label>Show File.</label>
+                <a href="<?php echo $file ?>" target="_blank">Open File </a>
+            <?php } ?>
         </div>
+
 
         <div class="span3 lightblue" id="poHDRLabel2" style="display: none" >
                 <label>PIC Email<span style="color: red;">*</span></label>
                 <?php
-                createCombo("SELECT user_id, user_email FROM user WHERE active = 1", "$picEmail", "", "picEmail", "user_email", "user_email",
+                createCombo("SELECT user_id, user_email FROM user WHERE active = 1", $picEmail, "", "picEmail", "user_email", "user_email",
                     "", "", "select2combobox100", 1, "", true);
             ?>
         </div>
 
-        <?php if (isset($file) && $file != '') { ?>
-            <div class="span3 lightblue">
-                <label>Show File.</label>
-                <a href="<?php echo $file ?>" target="_blank">Open File </a>
-            </div>
-        <?php } ?>
 
 
     </div>
@@ -1647,7 +1646,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue" id="generalUserEmail" style="display: none" >
                 <label>PIC Email<span style="color: red;">*</span></label>
                 <?php
-                createCombo("SELECT user_id, user_email FROM user WHERE active = 1", "$picEmail", "", "picEmail", "user_email", "user_email",
+                createCombo("SELECT user_id, user_email FROM user WHERE active = 1", $picEmail2, "", "picEmail2", "user_email", "user_email",
                     "", "", "select2combobox100", 1, "", true);
             ?>
         </div>
