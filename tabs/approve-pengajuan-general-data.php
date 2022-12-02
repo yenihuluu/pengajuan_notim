@@ -85,6 +85,10 @@ if (isset($_POST['pgId']) && $_POST['pgId'] != '') {
         if($pStatus == 2){
             $disabledProperty = ' disabled ';
         }
+
+        if ($stockpileContractId3 != NULL) {
+            $readonlyProperty = ' readonly ';
+        }
     }
 
     $sqlGetPGD = "SELECT * FROM pengajuan_general_detail WHERE pg_id = {$pgId} LIMIT 1";
@@ -816,14 +820,14 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue">
             <label>Request Date</label>
             <input type="text" placeholder="DD/MM/YYYY" tabindex="" id="requestDate" name="requestDate"
-                   value="<?php echo $requestDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker" readonly>
+                   value="<?php echo $requestDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker">
         </div>
         <div class="span1 lightblue">
         </div>
         <div class="span3 lightblue">
             <label>Invoice Date</label>
             <input type="text" placeholder="DD/MM/YYYY" tabindex="" id="invoiceDate" name="invoiceDate"
-                   value="<?php echo $invoiceDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker" readonly>
+                   value="<?php echo $invoiceDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker">
         </div>
         <div class="span1 lightblue">
         </div>
@@ -837,8 +841,11 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
     <div class="row-fluid" style="margin-bottom: 7px;">
         <div class="span3 lightblue">
             <label>Stockpile <span style="color: red;">*</span></label>
-            <?php
-            createCombo("SELECT stockpile_id, stockpile_name FROM stockpile", $stockpileId, "", "stockpileId", "stockpile_id", "stockpile_name", "", "", "select2combobox100", 1);
+            <?php if ($stockpileContractId3 != '') { 
+                createCombo("SELECT stockpile_id, stockpile_name FROM stockpile", $stockpileId, "disabled", "stockpileId", "stockpile_id", "stockpile_name", "", "", "select2combobox100", 1);
+            } else {
+                createCombo("SELECT stockpile_id, stockpile_name FROM stockpile", $stockpileId, "", "stockpileId", "stockpile_id", "stockpile_name", "", "", "select2combobox100", 1);
+            }
             ?>
         </div>
         <div class="span1 lightblue">
@@ -859,15 +866,19 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <div class="span3 lightblue">
             <label>Tax Invoice Date</label>
             <input type="text" placeholder="DD/MM/YYYY" tabindex="" id="taxDate" name="taxDate"
-                   value="<?php echo $taxDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker" readonly>
+                   value="<?php echo $taxDate; ?>" data-date-format="dd/mm/yyyy" class="datepicker">
         </div>
     </div>
     <div class="row-fluid" style="margin-bottom: 7px;">
         <div class="span3 lightblue">
             <label>Invoice Method <span style="color: red;">*</span></label>
-            <?php
-            createCombo("SELECT '1' as id, 'Full Payment' as info UNION
+            <?php if ($stockpileContractId3 != '') { 
+                createCombo("SELECT '1' as id, 'Full Payment' as info UNION
               		   SELECT '2' as id, 'Down Payment' as info;", $POMethod, "disabled", "invoiceMethod", "id", "info", "", "", "select2combobox100", 1);
+            } else {
+                createCombo("SELECT '1' as id, 'Full Payment' as info UNION
+              		   SELECT '2' as id, 'Down Payment' as info;", $POMethod, "", "invoiceMethod", "id", "info", "", "", "select2combobox100", 1);
+            }
             ?>
             <input type="hidden" class="span12" tabindex="" id="invoiceMethod" name="invoiceMethod"
                    value="<?php echo $POMethod; ?>" readonly>
@@ -896,10 +907,15 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
 
         <div class="span3 lightblue" id="generalVendorIdLabel" style="display: none">
             <label>Vendor<span style="color: red;">*</span></label>
-            <?php
+            <?php if ($stockpileContractId3 != '') { 
             createCombo("SELECT gv.general_vendor_id, gv.general_vendor_name
-                        FROM general_vendor gv WHERE gv.active = 1 ORDER BY gv.general_vendor_name", $generalVendorId, "", "generalVendorId", "general_vendor_id", "general_vendor_name",
+                        FROM general_vendor gv WHERE gv.active = 1 ORDER BY gv.general_vendor_name", $generalVendorId, "disabled", "generalVendorId", "general_vendor_id", "general_vendor_name",
                 "", "", "select2combobox100", 1, "", true);
+            } else {
+                createCombo("SELECT gv.general_vendor_id, gv.general_vendor_name
+                FROM general_vendor gv WHERE gv.active = 1 ORDER BY gv.general_vendor_name", $generalVendorId, "", "generalVendorId", "general_vendor_id", "general_vendor_name",
+        "", "", "select2combobox100", 1, "", true);
+            }
             ?>
         </div>
         <div class="span3 lightblue" id="generalVendorEmail" style="display: none" >

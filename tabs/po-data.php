@@ -84,7 +84,7 @@ if (isset($_POST['POId']) && $_POST['POId'] != '') {
         $gvEmail = $rowData->gv_email;
         $POMethod = $rowData->po_method;
 
-        if($rowData->po_status == 5) {
+        if($rowData->po_status == 5 || $rowData->po_status == 1) {
             $disableProperty = 'disabled';
             $readonlyProperty = 'readonly';
         }
