@@ -80,7 +80,7 @@ if ($result !== false && $result->num_rows == 1) {
         $invoiceType = 1;
        
     }else if($typeOKS == 3){
-        $accountId = 540;
+        $accountId = 220;
         $invoiceType = 1;
     }
 }
@@ -164,6 +164,9 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         <?php if($spRemark != '' && $accountId !='' && $typeOKS == 1){ ?>
             resetPoNo(' ');
             setPoNo(0, <?php echo $accountId ?>, <?php echo $spRemark ?>, 0);
+			 <?php if($invoiceMethod == 1){ ?>
+				setInvoiceDP(<?php echo  $podID ?>, <?php echo  $generalVendorId ?>, '', '', 'NONE');
+			<?php } ?>
         <?php } else if($typeOKS == 2){ ?>
           // var contractId = document.getElementById('contractId').value;
          //SET LOADING
@@ -185,7 +188,8 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
             //set PO No otomatis
            
         <?php }else if($typeOKS == 3){ ?>
-            $('#accountId').find('option').each(function(i,e){
+		  setAccount(1, $('select[id="invoiceType"]').val(), <?php echo $accountId ?>);
+         /*   $('#accountId').find('option').each(function(i,e){
                 if($(e).val() == <?php echo $accountId ?>){
                     $('#accountId').prop('selectedIndex',i);
                                 
@@ -194,7 +198,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
                             placeholder: <?php echo $accountId ?>
                         });
                 }
-            });       
+            });       */
         <?php } ?>
 
         //kalau job costing sudah dipake ini diaktifkan
@@ -227,9 +231,7 @@ function createCombo($sql, $setvalue = "", $disabled = "", $id = "", $valuekey =
         //         $('#divtipebiaya').hide();
         // <?php } ?>
 
-        <?php if($invoiceMethod == 1){ ?>
-            setInvoiceDP(<?php echo  $podID ?>, <?php echo  $generalVendorId ?>, '', '', 'NONE');
-        <?php } ?>
+       
 
     });
 

@@ -647,7 +647,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                         } else if(isset($transaksiPO) &&  $transaksiOKSAKT == 3){  
                          //-------------------------------------------------------------------- INSERT OKS AKT OTHERS---------------------------------------------------------------------------------------
 
-                            $transaksiMutasi = 1;
+                        $transaksiMutasi = 1;
                             $totalDpp = 0;
                             $periodefrom = $myDatabase->real_escape_string($_POST['periodefrom']);
                             $periodeto = $myDatabase->real_escape_string($_POST['periodeto']);
@@ -697,8 +697,8 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                 $pgId = $myDatabase->insert_id;
                                 $sqlB = "SELECT * FROM (
                                             SELECT oks.oks_akt_id, 
-                                            CASE WHEN tt.quantity > 15000 AND oks.car_type = 2 THEN oks.price ELSE 0 END smallPrice,
-                                            CASE WHEN tt.quantity < 15000 AND oks.car_type = 1 THEN oks.price ELSE 0 END bigPrice,
+                                            CASE WHEN tt.quantity > 15000 AND oks.car_type = 1 THEN oks.price ELSE 0 END smallPrice,
+                                            CASE WHEN tt.quantity < 15000 AND oks.car_type = 2 THEN oks.price ELSE 0 END bigPrice,
                                             tt.*, t.slip_no AS slipNo
                                             FROM transaction_timbangan tt 
                                             LEFT JOIN `transaction` t ON tt.transaction_id = t.t_timbangan 
@@ -764,7 +764,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
                                             . " {$row_get_count->qty},$priceOKS, $termin, {$dpp}, {$dpp}, 1, 1, {$pph_id}, '{$total_pph}', "
                                             . " '{$total_pph}', '{$tAmount}', '{$tAmount}', {$tAmount}, '{$notes}',{$_SESSION['userId']}, STR_TO_DATE('$currentDate', '%d/%m/%Y %H:%i:%s'))";
                                         $result_insert_detailA = $myDatabase->query($sql_insert_detailA, MYSQLI_STORE_RESULT); 
-                                    //    echo " <br><br> A 4: <br>" . $sql_insert_detailA;
+                                    //   echo " <br><br> A 4: <br>" . $sql_insert_detailA;
 
                                     }
                                 }
@@ -2165,31 +2165,26 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'pengajuan_general_data
     $typeOKS = $_POST['typeOKS'] ;
 
     if($typeOKS == 3){
-        $sql = "SELECT * FROM (SELECT  CASE WHEN oks.car_type = 1 THEN oks.price ELSE 0 END AS smallCar,
-        CASE WHEN oks.car_type = 3 THEN oks.price ELSE 0 END AS bigCar,
-        tks.slip_no, oks.car_type,
-        id.pgd_id,id.vendor_name,id.prediksi_amount, 
+        $sql = "SELECT id.pgd_id,id.vendor_name,id.prediksi_amount, 
                     CASE WHEN id.type = 4 THEN 'Loading'
-                    WHEN id.type = 5 THEN 'Umum'
-                    WHEN id.type = 6 THEN 'HO' ELSE '' END AS `type2`, 
-                    CASE WHEN id.poId > 0 THEN c.po_no
-                    WHEN id.shipment_id > 0 THEN  sh.shipment_no
-                    ELSE '' END AS po_shipment, s.stockpile_name, id.notes, cur.currency_code, id.exchange_rate,
-                    a.account_name, mutasi_detail_id,
-                    id.qty, id.price, id.termin AS termin1, id.amount, id.ppn, id.pph, id.tamount, id.tamount_converted, gv.general_vendor_name, gv.pph AS gv_pph, gv.ppn AS gv_ppn,id.termin
-                    FROM pengajuan_general_detail id
-                    LEFT JOIN account a ON id.account_id = a.account_id
-                    LEFT JOIN shipment sh ON id.shipment_id = sh.shipment_id
-                    LEFT JOIN stockpile s ON id.stockpile_remark = s.stockpile_id
-                    LEFT JOIN general_vendor gv ON id.general_vendor_id = gv.general_vendor_id
-                    LEFT JOIN contract c ON c.contract_id = id.poId
-                    LEFT JOIN currency cur ON cur.currency_id = id.currency_id
-                    LEFT JOIN temp_oks_akt_others tks ON tks.pg_id = id.pg_id
-                    LEFT JOIN oks_akt oks ON oks.oks_akt_id = tks.id_oks_akt
-                    WHERE id.pg_id = {$_POST['pgId']}  AND id.status = 0 AND tks.status = 0 ORDER BY id.pgd_id ASC
-        ) AS a
-        WHERE a.smallCar > 0 OR a.bigCar > 0
-        GROUP BY a.car_type";
+                        WHEN id.type = 5 THEN 'Umum'
+                        WHEN id.type = 6 THEN 'HO' ELSE '' END AS `type2`, 
+                        CASE WHEN id.poId > 0 THEN c.po_no
+                        WHEN id.shipment_id > 0 THEN  sh.shipment_no
+                        ELSE '' END AS po_shipment, s.stockpile_name, id.notes, cur.currency_code, id.exchange_rate,
+                        a.account_name, mutasi_detail_id,
+                        id.qty, id.price, id.termin AS termin1, id.amount, id.ppn, 
+                        id.pph, id.tamount, id.tamount_converted, gv.general_vendor_name, gv.pph AS gv_pph, gv.ppn AS gv_ppn,id.termin
+                        FROM pengajuan_general_detail id
+                        LEFT JOIN account a ON id.account_id = a.account_id
+                        LEFT JOIN shipment sh ON id.shipment_id = sh.shipment_id
+                        LEFT JOIN stockpile s ON id.stockpile_remark = s.stockpile_id
+                        LEFT JOIN general_vendor gv ON id.general_vendor_id = gv.general_vendor_id
+                        LEFT JOIN contract c ON c.contract_id = id.poId
+                        LEFT JOIN currency cur ON cur.currency_id = id.currency_id
+                        LEFT JOIN temp_oks_akt_others tks ON tks.pg_id = id.pg_id
+                WHERE id.pg_id = {$_POST['pgId']}  AND id.status = 0 AND tks.status = 0 
+                GROUP BY id.pgd_id ORDER BY id.pgd_id ASC";
     }else{
         $sql = "SELECT id.pgd_id,id.vendor_name,id.prediksi_amount, 
                 CASE WHEN id.type = 4 THEN 'Loading'

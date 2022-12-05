@@ -81,7 +81,12 @@ if (isset($_POST['pgId']) && $_POST['pgId'] != '') {
         $pStatus = $rowData->status_pengajuan;
         $invoiceMethod = $rowData->invoice_method;
         $typeOKS = $rowData->transaksi_oks_akt;
-        $POMethod = $rowData->po_method;
+        //$POMethod = $rowData->po_method;
+		if($POMethod == ''){
+            $POMethod = 1;
+        }else{
+            $POMethod = $rowData->po_method;
+        }
         if($pStatus == 2){
             $disabledProperty = ' disabled ';
         }

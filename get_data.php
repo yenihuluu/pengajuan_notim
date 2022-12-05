@@ -866,7 +866,6 @@ function setSlipVehicle($stockpileId, $checkedSlips, $periodeFrom, $periodeTo, $
     }
    echo $returnValue;
 }
-
 //General
 function getEmails($invId)
 {
